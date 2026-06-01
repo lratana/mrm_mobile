@@ -108,6 +108,8 @@ class Booking {
   final BookingUser? user;
 
   final bool isGenerated;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   const Booking({
     required this.id,
@@ -132,6 +134,8 @@ class Booking {
     this.room,
     this.user,
     this.isGenerated = false,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -187,6 +191,8 @@ class Booking {
           : null,
 
       isGenerated: _asBool(json['is_generated']),
+      createdAt: _asDate(json['created_at']),
+      updatedAt: _asDate(json['updated_at']),
     );
   }
 
@@ -225,6 +231,8 @@ class Booking {
       'snack_note': snackNote,
       'technician_required': technicianRequired,
       'technician_note': technicianNote,
+      'created_at': createdAt?.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
     };
   }
 }

@@ -125,42 +125,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             validator: emailValidator,
                           ),
                           const SizedBox(height: 24),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'Password',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    color: Color(0xFF3F4A4D),
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const ForgotPasswordScreen(),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Forgot\nPassword?',
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    color: AppConstants.primary,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+
                           AuthTextField(
                             controller: _passwordController,
-                            label: '',
+                            label: 'Password',
                             hint: 'Enter your password',
                             icon: Icons.lock_outline,
                             obscureText: _hidePassword,
@@ -177,7 +145,24 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          TextButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ForgotPasswordScreen(),
+                              ),
+                            ),
+                            child: const Text(
+                              'Forgot Password?',
+                              textAlign: TextAlign.left,
+                              style: TextStyle(
+                                color: AppConstants.primary,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+
                           PrimaryActionButton(
                             text: 'Sign In',
                             loading: auth.loading,

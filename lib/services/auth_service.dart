@@ -79,6 +79,45 @@ class AuthService {
     );
   }
 
+  Future<AppUser?> updateProfile({
+    required String name,
+    required String email,
+    required String phoneNumber,
+    String? imagePath,
+  }) async {
+    final response = await _api.multipartPost(
+      'api/profile/update',
+      fields: {
+        'name': name,
+        'full_name': name,
+        'email': email,
+        'phone_number': phoneNumber,
+        '_method': 'PUT',
+      },
+      files: imagePath == null || imagePath.isEmpty
+          ? null
+          : {'image': imagePath},
+    );
+
+    final map = _asMap(response);
+
+    final data = map['data'];
+
+    if (data is Map && data['user'] is Map) {
+      return AppUser.fromJson(Map<String, dynamic>.from(data['user']));
+    }
+
+    if (map['user'] is Map) {
+      return AppUser.fromJson(Map<String, dynamic>.from(map['user']));
+    }
+
+    if (data is Map) {
+      return AppUser.fromJson(Map<String, dynamic>.from(data));
+    }
+
+    return null;
+  }
+
   Future<String> forgotPassword(String email) async {
     final response = await _api.post(
       AppConstants.forgotPasswordPath,

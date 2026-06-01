@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-
 import '../models/booking_model.dart';
 import '../models/room_model.dart';
 import '../services/booking_service.dart';
@@ -85,6 +84,7 @@ class BookingController extends ChangeNotifier {
     }
   }
 
+  // Helpers to parse API responses that may have different structures
   Future<bool> requestCancel(int id, String reason) async {
     submitting = true;
     error = null;
@@ -102,6 +102,62 @@ class BookingController extends ChangeNotifier {
       return true;
     } catch (e) {
       error = _cleanError(e);
+      return false;
+    } finally {
+      submitting = false;
+      notifyListeners();
+    }
+  }
+
+  // Admin actions
+  Future<bool> rejectBooking(int id, String reason) async {
+    submitting = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final updated = await _service.reject(id, reason);
+
+      final index = bookings.indexWhere((booking) => booking.bookingId == id);
+
+      if (index >= 0) {
+        bookings[index] = updated;
+      }
+
+      return true;
+    } catch (e) {
+      error = e
+          .toString()
+          .replaceFirst('Exception: ', '')
+          .replaceFirst(RegExp(r'ApiException\(\d+\):\s*'), '');
+      return false;
+    } finally {
+      submitting = false;
+      notifyListeners();
+    }
+  }
+
+  /// Admin actions
+  Future<bool> approveBooking(int id) async {
+    submitting = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final updated = await _service.approve(id);
+
+      final index = bookings.indexWhere((booking) => booking.bookingId == id);
+
+      if (index >= 0) {
+        bookings[index] = updated;
+      }
+
+      return true;
+    } catch (e) {
+      error = e
+          .toString()
+          .replaceFirst('Exception: ', '')
+          .replaceFirst(RegExp(r'ApiException\(\d+\):\s*'), '');
       return false;
     } finally {
       submitting = false;

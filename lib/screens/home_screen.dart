@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/services/check_network.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/booking_controller.dart';
@@ -32,13 +33,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
 
-    Future.microtask(() {
+    Future.microtask(() async {
       if (!mounted) return;
 
       context.read<RoomController>().fetchRooms();
       context.read<BookingController>().fetchBookings();
       context.read<NotificationController>().fetchNotifications();
-      context.read<NotificationController>().startRealtimeBadge();
+      context.read<NotificationController>().startRealtimeNotifications();
       context.read<CalendarController>().fetchMonth(DateTime.now());
     });
   }
@@ -64,9 +65,9 @@ class _HomeScreenState extends State<HomeScreen> {
             indicatorColor: AppConstants.mint,
             destinations: [
               const NavigationDestination(
-                icon: Icon(Icons.search),
-                selectedIcon: Icon(Icons.search, color: AppConstants.primary),
-                label: 'Explore',
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home, color: AppConstants.primary),
+                label: 'Home',
               ),
               const NavigationDestination(
                 icon: Icon(Icons.calendar_today_outlined),

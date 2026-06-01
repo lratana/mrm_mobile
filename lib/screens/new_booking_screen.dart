@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/models/booking_model.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -9,8 +10,11 @@ import '../widgets/room_card.dart';
 
 class NewBookingScreen extends StatefulWidget {
   final Room room;
+  final Booking? booking;
 
-  const NewBookingScreen({super.key, required this.room});
+  const NewBookingScreen({super.key, required this.room, this.booking});
+
+  bool get isEdit => booking != null;
 
   @override
   State<NewBookingScreen> createState() => _NewBookingScreenState();
@@ -24,6 +28,8 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
   bool snackRequired = false;
   bool technicianRequired = false;
 
+  String selectedTimeOption = 'custom';
+
   String recurrenceType = 'none';
   int recurrencePeriod = 1;
   DateTime? recurrenceUntil;
@@ -32,6 +38,25 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
   final chairman = TextEditingController();
   final snackNote = TextEditingController();
   final technicianNote = TextEditingController();
+
+  static const String _noMeetingTitle = 'No Title';
+  static const String _customMeetingTitle = 'Other / Custom Title';
+
+  final List<String> meetingTitleOptions = const [
+    _noMeetingTitle,
+    'Weekly Team Meeting',
+    'Monthly Management Meeting',
+    'Quarterly Strategy Sync',
+    'Project Review Meeting',
+    'Client Meeting',
+    'Training Session',
+    'Workshop',
+    'Interview Meeting',
+    _customMeetingTitle,
+  ];
+
+  String selectedMeetingTitle = _noMeetingTitle;
+  bool showCustomMeetingTitle = false;
 
   final List<TimeOfDay> times = const [
     TimeOfDay(hour: 9, minute: 0),
@@ -44,6 +69,84 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     TimeOfDay(hour: 16, minute: 0),
   ];
 
+  final List<_BookingTimePreset> timePresets = const [
+    _BookingTimePreset(
+      value: 'morning',
+      label: 'Morning',
+      startTime: TimeOfDay(hour: 9, minute: 0),
+      hours: 3,
+      icon: Icons.wb_sunny_outlined,
+    ),
+    _BookingTimePreset(
+      value: 'afternoon',
+      label: 'Afternoon',
+      startTime: TimeOfDay(hour: 13, minute: 0),
+      hours: 4,
+      icon: Icons.light_mode_outlined,
+    ),
+    _BookingTimePreset(
+      value: 'full_day',
+      label: 'Full Day',
+      startTime: TimeOfDay(hour: 9, minute: 0),
+      hours: 8,
+      icon: Icons.calendar_view_day_outlined,
+    ),
+    _BookingTimePreset(
+      value: 'custom',
+      label: 'Custom',
+      startTime: TimeOfDay(hour: 11, minute: 0),
+      hours: 2,
+      icon: Icons.tune,
+    ),
+  ];
+  @override
+  void initState() {
+    super.initState();
+
+    final booking = widget.booking;
+
+    if (booking != null) {
+      final start = booking.startDatetime;
+      final end = booking.endDatetime;
+
+      if (start != null) {
+        selectedDate = DateTime(start.year, start.month, start.day);
+        selectedTime = TimeOfDay(hour: start.hour, minute: start.minute);
+      }
+
+      if (start != null && end != null) {
+        final hours = end.difference(start).inHours;
+        durationHours = hours <= 0 ? 1 : hours;
+      }
+
+      meetingTitle.text = booking.meetingTitle;
+
+      if (booking.meetingTitle.trim().isEmpty) {
+        selectedMeetingTitle = _noMeetingTitle;
+      } else if (meetingTitleOptions.contains(booking.meetingTitle)) {
+        selectedMeetingTitle = booking.meetingTitle;
+      } else {
+        selectedMeetingTitle = _customMeetingTitle;
+        showCustomMeetingTitle = true;
+      }
+
+      chairman.text = booking.meetingChairman;
+
+      snackRequired = booking.snackRequired;
+      snackNote.text = booking.snackNote ?? '';
+
+      technicianRequired = booking.technicianRequired;
+      technicianNote.text = booking.technicianNote ?? '';
+
+      recurrenceType = booking.recurrenceType.trim().isEmpty
+          ? 'none'
+          : booking.recurrenceType;
+
+      recurrencePeriod = booking.recurrencePeriod ?? 1;
+      recurrenceUntil = booking.recurrenceUntil;
+    }
+  }
+
   @override
   void dispose() {
     meetingTitle.dispose();
@@ -53,30 +156,103 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     super.dispose();
   }
 
-  DateTime get _startDateTime => DateTime(
-    selectedDate.year,
-    selectedDate.month,
-    selectedDate.day,
-    selectedTime.hour,
-    selectedTime.minute,
-  );
+  DateTime get _startDateTime {
+    return DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+  }
 
-  DateTime get _endDateTime =>
-      _startDateTime.add(Duration(hours: durationHours));
+  DateTime get _endDateTime {
+    return _startDateTime.add(Duration(hours: durationHours));
+  }
 
-  String _apiDate(DateTime date) =>
-      DateFormat('yyyy-MM-dd HH:mm:ss').format(date);
+  String _apiDate(DateTime date) {
+    return DateFormat('yyyy-MM-dd HH:mm:ss').format(date);
+  }
 
-  Future<void> _pickRecurrenceUntil() async {
+  String _timeText(TimeOfDay time) {
+    final date = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      time.hour,
+      time.minute,
+    );
+
+    return DateFormat('hh:mm a').format(date);
+  }
+
+  void _applyTimePreset(_BookingTimePreset preset) {
+    setState(() {
+      selectedTimeOption = preset.value;
+
+      if (preset.value != 'custom') {
+        selectedTime = preset.startTime;
+        durationHours = preset.hours;
+      }
+    });
+  }
+
+  void _selectMeetingTitle(String? value) {
+    if (value == null) return;
+
+    setState(() {
+      selectedMeetingTitle = value;
+      showCustomMeetingTitle = value == _customMeetingTitle;
+
+      if (value == _noMeetingTitle) {
+        meetingTitle.clear();
+      } else if (value != _customMeetingTitle) {
+        meetingTitle.text = value;
+      } else if (meetingTitleOptions.contains(meetingTitle.text)) {
+        meetingTitle.clear();
+      }
+    });
+  }
+
+  Future<void> _pickBookingDate() async {
+    final now = DateTime.now();
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: recurrenceUntil ?? selectedDate.add(const Duration(days: 7)),
-      firstDate: selectedDate,
-      lastDate: selectedDate.add(const Duration(days: 365)),
+      initialDate: selectedDate,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).add(const Duration(days: 60)),
+      helpText: 'Select Booking Date',
+      confirmText: 'Select',
+      cancelText: 'Cancel',
     );
 
     if (picked != null) {
-      setState(() => recurrenceUntil = picked);
+      setState(() {
+        selectedDate = picked;
+      });
+    }
+  }
+
+  Future<void> _pickRecurrenceUntil() async {
+    final first = DateTime.now();
+    final last = first.add(const Duration(days: 60)); // limit 60 days
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: recurrenceUntil ?? first,
+      firstDate: first,
+      lastDate: last,
+    );
+
+    if (picked != null) {
+      setState(() {
+        recurrenceUntil = picked;
+      });
     }
   }
 
@@ -94,6 +270,7 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
       );
       return;
     }
+
     if (recurrenceType == 'none') {
       recurrenceUntil = null;
       recurrencePeriod = 1;
@@ -134,13 +311,22 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
 
     try {
       final controller = context.read<BookingController>();
-      final ok = await controller.createBooking(payload);
+
+      final ok = widget.isEdit
+          ? await controller.updateBooking(widget.booking!.bookingId, payload)
+          : await controller.createBooking(payload);
 
       if (!mounted) return;
 
       if (ok) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Booking submitted successfully')),
+          SnackBar(
+            content: Text(
+              widget.isEdit
+                  ? 'Booking updated successfully'
+                  : 'Booking submitted successfully',
+            ),
+          ),
         );
         Navigator.pop(context);
       } else {
@@ -150,6 +336,7 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Booking error: $e')));
@@ -166,23 +353,125 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
         backgroundColor: AppConstants.bg,
         elevation: 0,
         foregroundColor: AppConstants.primaryDark,
-        title: const Text(
-          'New Booking',
-          style: TextStyle(fontWeight: FontWeight.w800),
+        title: Text(
+          widget.isEdit ? 'Update Booking' : 'New Booking',
+          style: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppConstants.pagePadding),
         children: [
           _RoomSummary(room: widget.room),
+
           const SizedBox(height: 24),
-          const _SectionTitle('Select Date'),
-          _DateStrip(
-            selectedDate: selectedDate,
-            onDateSelected: (d) => setState(() => selectedDate = d),
+
+          const _SectionTitle('Select Date *'),
+
+          InkWell(
+            onTap: _pickBookingDate,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+              decoration: _boxDecoration(),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_month_rounded,
+                    color: AppConstants.primary,
+                  ),
+                  const SizedBox(width: 12),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Booking Date',
+                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          DateFormat('EEEE, dd MMM yyyy').format(selectedDate),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Icon(Icons.arrow_drop_down_rounded),
+                ],
+              ),
+            ),
           ),
+
           const SizedBox(height: 24),
-          const _SectionTitle('Select Time'),
+
+          const _SectionTitle('Select Time Option *'),
+
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: timePresets.map((preset) {
+              final selected = selectedTimeOption == preset.value;
+
+              return ChoiceChip(
+                avatar: Icon(
+                  preset.icon,
+                  size: 18,
+                  color: selected ? Colors.white : AppConstants.primary,
+                ),
+                label: Text(preset.label),
+                selected: selected,
+                selectedColor: AppConstants.primary,
+                backgroundColor: Colors.white,
+                onSelected: (_) {
+                  _applyTimePreset(preset);
+                },
+                labelStyle: TextStyle(
+                  color: selected ? Colors.white : AppConstants.text,
+                  fontWeight: FontWeight.w800,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(
+                    color: selected
+                        ? AppConstants.primary
+                        : AppConstants.border,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 14),
+
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: _boxDecoration(),
+            child: Row(
+              children: [
+                const Icon(Icons.schedule, color: AppConstants.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Selected: ${_timeText(selectedTime)} - ${DateFormat('hh:mm a').format(_endDateTime)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppConstants.primaryDark,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          const _SectionTitle('Select Start Time *'),
+
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -197,18 +486,34 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                   child: Center(child: Text(time.format(context))),
                 ),
                 selected: selected,
-                onSelected: (_) => setState(() => selectedTime = time),
                 selectedColor: AppConstants.primary,
                 backgroundColor: Colors.white,
+                onSelected: (_) {
+                  setState(() {
+                    selectedTimeOption = 'custom';
+                    selectedTime = time;
+                  });
+                },
                 labelStyle: TextStyle(
                   color: selected ? Colors.white : AppConstants.text,
                   fontWeight: FontWeight.w800,
                 ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: selected
+                        ? AppConstants.primary
+                        : AppConstants.border,
+                  ),
+                ),
               );
             }).toList(),
           ),
+
           const SizedBox(height: 26),
+
           const _SectionTitle('Booking Duration'),
+
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: _boxDecoration(),
@@ -223,7 +528,12 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                 _CircleButton(
                   icon: Icons.remove,
                   onTap: durationHours > 1
-                      ? () => setState(() => durationHours--)
+                      ? () {
+                          setState(() {
+                            selectedTimeOption = 'custom';
+                            durationHours--;
+                          });
+                        }
                       : null,
                 ),
                 SizedBox(
@@ -241,49 +551,86 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                 ),
                 _CircleButton(
                   icon: Icons.add,
-                  onTap: () => setState(() => durationHours++),
+                  onTap: () {
+                    setState(() {
+                      selectedTimeOption = 'custom';
+                      durationHours++;
+                    });
+                  },
                 ),
               ],
             ),
           ),
+
           const SizedBox(height: 22),
-          const _SectionTitle('Meeting Title (Optional)'),
-          _Input(
-            controller: meetingTitle,
-            hint: 'e.g. Quarterly Strategy Sync',
+
+          const _SectionTitle('Meeting Title *'),
+
+          MeetingTitleSelector(
+            value: selectedMeetingTitle,
+            titles: meetingTitleOptions,
+            onChanged: _selectMeetingTitle,
           ),
+
+          if (showCustomMeetingTitle) ...[
+            const SizedBox(height: 12),
+            _Input(
+              controller: meetingTitle,
+              hint: 'Enter custom meeting title',
+            ),
+          ],
+
           const SizedBox(height: 22),
-          const _SectionTitle('Meeting Chairman'),
+
+          const _SectionTitle('Meeting Chairman *'),
+
           _Input(controller: chairman, hint: 'Enter chairman name'),
+
           const SizedBox(height: 22),
+
           const _SectionTitle('Snacks & Catering'),
+
           _SwitchBox(
             title: 'Snack Required',
             value: snackRequired,
-            onChanged: (v) => setState(() => snackRequired = v),
+            onChanged: (value) {
+              setState(() {
+                snackRequired = value;
+              });
+            },
           ),
-          if (snackRequired)
-            _Input(controller: snackNote, hint: 'Snack Note (Optional)'),
+
+          if (snackRequired) _Input(controller: snackNote, hint: 'Snack Note'),
+
           const SizedBox(height: 22),
+
           const _SectionTitle('Technical Support'),
+
           _SwitchBox(
             title: 'Technician Required',
             value: technicianRequired,
-            onChanged: (v) => setState(() => technicianRequired = v),
+            onChanged: (value) {
+              setState(() {
+                technicianRequired = value;
+              });
+            },
           ),
+
           if (technicianRequired)
-            _Input(
-              controller: technicianNote,
-              hint: 'Technician Note (Optional)',
-            ),
+            _Input(controller: technicianNote, hint: 'Technician Note'),
+
           const SizedBox(height: 22),
+
           const _SectionTitle('Recurrence Type'),
+
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: _boxDecoration(),
             child: Column(
               children: ['none', 'daily', 'weekly'].map((type) {
                 return RadioListTile<String>(
+                  contentPadding: EdgeInsets.zero,
+
                   title: Text(
                     type[0].toUpperCase() + type.substring(1),
                     style: const TextStyle(fontWeight: FontWeight.w800),
@@ -291,9 +638,10 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                   value: type,
                   groupValue: recurrenceType,
                   activeColor: AppConstants.primary,
-                  onChanged: (v) {
+                  onChanged: (value) {
                     setState(() {
-                      recurrenceType = v ?? 'none';
+                      recurrenceType = value ?? 'none';
+
                       if (recurrenceType == 'none') {
                         recurrenceUntil = null;
                         recurrencePeriod = 1;
@@ -304,6 +652,7 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
               }).toList(),
             ),
           ),
+
           if (recurrenceType != 'none') ...[
             const SizedBox(height: 22),
             const _SectionTitle('Recurrence Period'),
@@ -323,7 +672,11 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                   _CircleButton(
                     icon: Icons.remove,
                     onTap: recurrencePeriod > 1
-                        ? () => setState(() => recurrencePeriod--)
+                        ? () {
+                            setState(() {
+                              recurrencePeriod--;
+                            });
+                          }
                         : null,
                   ),
                   SizedBox(
@@ -341,7 +694,11 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                   ),
                   _CircleButton(
                     icon: Icons.add,
-                    onTap: () => setState(() => recurrencePeriod++),
+                    onTap: () {
+                      setState(() {
+                        recurrencePeriod++;
+                      });
+                    },
                   ),
                 ],
               ),
@@ -377,7 +734,9 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
               ),
             ),
           ],
+
           const SizedBox(height: 28),
+
           SizedBox(
             height: 56,
             child: ElevatedButton.icon(
@@ -398,8 +757,8 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                       ),
                     )
                   : const Icon(Icons.arrow_forward, color: Colors.white),
-              label: const Text(
-                'Confirm Booking',
+              label: Text(
+                widget.isEdit ? 'Update Booking' : 'Confirm Booking',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -407,10 +766,82 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
               ),
             ),
           ),
+
+          const SizedBox(height: 30),
         ],
       ),
     );
   }
+}
+
+class MeetingTitleSelector extends StatelessWidget {
+  final String value;
+  final List<String> titles;
+  final ValueChanged<String?> onChanged;
+
+  const MeetingTitleSelector({
+    required this.value,
+    required this.titles,
+    required this.onChanged,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: _boxDecoration(),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        isExpanded: true,
+        icon: const Icon(
+          Icons.keyboard_arrow_down_rounded,
+          color: AppConstants.primary,
+        ),
+        decoration: const InputDecoration(
+          prefixIcon: Icon(
+            Icons.groups_2_outlined,
+            color: AppConstants.primary,
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 17),
+        ),
+        items: titles
+            .map(
+              (title) => DropdownMenuItem<String>(
+                value: title,
+                child: Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: title == _NewBookingScreenState._noMeetingTitle
+                        ? AppConstants.muted
+                        : AppConstants.text,
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class _BookingTimePreset {
+  final String value;
+  final String label;
+  final TimeOfDay startTime;
+  final int hours;
+  final IconData icon;
+
+  const _BookingTimePreset({
+    required this.value,
+    required this.label,
+    required this.startTime,
+    required this.hours,
+    required this.icon,
+  });
 }
 
 class _RoomSummary extends StatelessWidget {
@@ -459,9 +890,10 @@ class _DateStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final first = DateTime.now();
+
     final days = List.generate(
       14,
-      (i) => DateTime(first.year, first.month, first.day + i),
+      (index) => DateTime(first.year, first.month, first.day + index),
     );
 
     return GridView.builder(

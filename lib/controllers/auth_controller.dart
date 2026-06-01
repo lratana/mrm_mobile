@@ -54,6 +54,43 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateProfile({
+    required String name,
+    required String email,
+    required String phoneNumber,
+    String? imagePath,
+  }) async {
+    loading = true;
+    error = null;
+    successMessage = null;
+    notifyListeners();
+
+    try {
+      final updatedUser = await _service.updateProfile(
+        name: name,
+        email: email,
+        phoneNumber: phoneNumber,
+        imagePath: imagePath,
+      );
+
+      if (updatedUser != null) {
+        user = updatedUser;
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_user', jsonEncode(updatedUser.toJson()));
+      }
+
+      successMessage = 'Profile updated successfully.';
+      return true;
+    } catch (e) {
+      error = _cleanError(e);
+      return false;
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
   /// Login
   Future<bool> login(String email, String password) async {
     loading = true;
