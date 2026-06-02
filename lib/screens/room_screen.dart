@@ -8,7 +8,6 @@ import 'package:flutter_application_1/utils/app_palette.dart';
 import 'package:flutter_application_1/utils/app_shimmer.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-
 import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../controllers/room_controller.dart';
