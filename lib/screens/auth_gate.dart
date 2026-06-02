@@ -43,6 +43,10 @@ class _AuthGateState extends State<AuthGate> {
       final notificationController = context.read<NotificationController>();
 
       if (isAuthenticated && isOnline && !_notificationPollingRunning) {
+        await notificationController.requestNotificationPermission();
+
+        if (!mounted) return;
+
         notificationController.startRealtimeNotifications();
         _notificationPollingRunning = true;
       } else if ((!isAuthenticated || !isOnline) &&

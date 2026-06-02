@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/services/check_network.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/booking_controller.dart';
 import '../controllers/calendar_controller.dart';
 import '../controllers/notification_controller.dart';
 import '../controllers/room_controller.dart';
+import '../utils/app_palette.dart';
 import '../utils/constants.dart';
 import 'booking_screen.dart';
 import 'calendar_screen.dart';
@@ -20,9 +20,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int currentIndex = 0;
+  int _currentIndex = 0;
 
-  final List<Widget> screens = const [
+  final List<Widget> _screens = const [
     RoomScreen(showHomeHeader: true),
     BookingScreen(),
     CalendarScreen(),
@@ -33,72 +33,72 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
 
-    Future.microtask(() async {
+    Future.microtask(() {
       if (!mounted) return;
 
       context.read<RoomController>().fetchRooms();
       context.read<BookingController>().fetchBookings();
-      context.read<NotificationController>().fetchNotifications();
-      context.read<NotificationController>().startRealtimeNotifications();
       context.read<CalendarController>().fetchMonth(DateTime.now());
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppConstants.bg,
-      body: IndexedStack(index: currentIndex, children: screens),
-      bottomNavigationBar: Consumer<NotificationController>(
-        builder: (context, notificationController, _) {
-          final unreadCount = notificationController.unreadCount;
+    final unreadCount = context.watch<NotificationController>().unreadCount;
 
-          return NavigationBar(
-            height: 72,
-            selectedIndex: currentIndex,
-            onDestinationSelected: (index) {
-              setState(() {
-                currentIndex = index;
-              });
-            },
-            backgroundColor: Colors.white,
-            indicatorColor: AppConstants.mint,
-            destinations: [
-              const NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home, color: AppConstants.primary),
-                label: 'Home',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.calendar_today_outlined),
-                selectedIcon: Icon(
-                  Icons.calendar_today,
-                  color: AppConstants.primary,
-                ),
-                label: 'Bookings',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.event_available_outlined),
-                selectedIcon: Icon(
-                  Icons.event_available,
-                  color: AppConstants.primary,
-                ),
-                label: 'Calendar',
-              ),
-              NavigationDestination(
-                icon: _NotificationIconWithBadge(
-                  count: unreadCount,
-                  selected: false,
-                ),
-                selectedIcon: _NotificationIconWithBadge(
-                  count: unreadCount,
-                  selected: true,
-                ),
-                label: 'Notifications',
-              ),
-            ],
-          );
+    return Scaffold(
+      backgroundColor: context.appColors.background,
+      body: IndexedStack(index: _currentIndex, children: _screens),
+      bottomNavigationBar: NavigationBar(
+        height: 72,
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
         },
+        backgroundColor: context.appColors.surface,
+        indicatorColor: context.appColors.primarySoft,
+        destinations: [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined, color: context.appColors.textMuted),
+            selectedIcon: const Icon(Icons.home, color: AppConstants.primary),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(
+              Icons.calendar_today_outlined,
+              color: context.appColors.textMuted,
+            ),
+            selectedIcon: const Icon(
+              Icons.calendar_today,
+              color: AppConstants.primary,
+            ),
+            label: 'Bookings',
+          ),
+          NavigationDestination(
+            icon: Icon(
+              Icons.event_available_outlined,
+              color: context.appColors.textMuted,
+            ),
+            selectedIcon: const Icon(
+              Icons.event_available,
+              color: AppConstants.primary,
+            ),
+            label: 'Calendar',
+          ),
+          NavigationDestination(
+            icon: _NotificationIconWithBadge(
+              count: unreadCount,
+              selected: false,
+            ),
+            selectedIcon: _NotificationIconWithBadge(
+              count: unreadCount,
+              selected: true,
+            ),
+            label: 'Notifications',
+          ),
+        ],
       ),
     );
   }
@@ -122,20 +122,24 @@ class _NotificationIconWithBadge extends StatelessWidget {
       children: [
         Icon(
           selected ? Icons.notifications : Icons.notifications_none,
-          color: selected ? AppConstants.primary : null,
+          color: selected ? AppConstants.primary : context.appColors.textMuted,
         ),
         if (count > 0)
           Positioned(
-            right: -8,
-            top: -8,
+            right: -7,
+            top: -7,
             child: Container(
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.red,
+                color: context.appColors.danger,
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: Colors.white, width: 1.5),
+                border: Border.all(
+                  color: context.appColors.surface,
+                  width: 1.5,
+                ),
               ),
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              alignment: Alignment.center,
               child: Text(
                 displayCount,
                 textAlign: TextAlign.center,

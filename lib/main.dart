@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/services/check_network.dart';
+import 'package:flutter_application_1/utils/app_theme.dart';
 import 'package:provider/provider.dart';
+
 import 'controllers/auth_controller.dart';
 import 'controllers/booking_controller.dart';
 import 'controllers/calendar_controller.dart';
 import 'controllers/notification_controller.dart';
 import 'controllers/room_controller.dart';
+import 'controllers/theme_controller.dart';
 import 'screens/auth_gate.dart';
-import 'utils/constants.dart';
+import 'services/check_network.dart';
 
 void main() {
   runApp(const RoomBookingApp());
@@ -20,31 +22,28 @@ class RoomBookingApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeController()..initialize()),
         ChangeNotifierProvider(create: (_) => CheckNetwork()..initialize()),
         ChangeNotifierProvider(create: (_) => AuthController()..initialize()),
-        ChangeNotifierProvider(create: (_) => NotificationController()),
         ChangeNotifierProvider(create: (_) => RoomController()),
         ChangeNotifierProvider(create: (_) => BookingController()),
         ChangeNotifierProvider(create: (_) => CalendarController()),
-      ],
-      child: MaterialApp(
-        title: 'Room Booking',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          scaffoldBackgroundColor: AppConstants.bg,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: AppConstants.primary,
-            primary: AppConstants.primary,
-            background: AppConstants.bg,
-          ),
-          fontFamily: 'Roboto',
-          appBarTheme: const AppBarTheme(
-            backgroundColor: AppConstants.bg,
-            surfaceTintColor: AppConstants.bg,
-          ),
+        ChangeNotifierProvider(
+          create: (_) =>
+              NotificationController()..initializeSystemNotifications(),
         ),
-        home: const AuthGate(),
+      ],
+      child: Consumer<ThemeController>(
+        builder: (context, themeController, _) {
+          return MaterialApp(
+            title: 'Room Booking',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: themeController.themeMode,
+            home: const AuthGate(),
+          );
+        },
       ),
     );
   }

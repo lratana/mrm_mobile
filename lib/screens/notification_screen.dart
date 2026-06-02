@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/notification_controller.dart';
+import '../utils/app_palette.dart';
 import '../utils/constants.dart';
 import '../widgets/notification_card.dart';
 
@@ -51,17 +52,21 @@ class NotificationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: context.appColors.background,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Notifications',
-          style: TextStyle(color: AppConstants.primary),
+          style: context.appText.titleLarge?.copyWith(
+            color: context.appColors.text,
+            fontWeight: FontWeight.w900,
+          ),
         ),
         centerTitle: true,
-        backgroundColor: AppConstants.bg,
-        surfaceTintColor: AppConstants.bg,
+        backgroundColor: context.appColors.background,
+        foregroundColor: context.appColors.text,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
       ),
-      backgroundColor: const Color(0xFFF8FAFD),
       body: Consumer<NotificationController>(
         builder: (context, controller, _) {
           if (controller.loading && controller.notifications.isEmpty) {
@@ -77,14 +82,6 @@ class NotificationScreen extends StatelessWidget {
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
-                  // SliverToBoxAdapter(
-                  //   child: _GmailHeader(
-                  //     unreadCount: controller.unreadCount,
-                  //     loading: controller.loading,
-                  //     onBack: () => Navigator.maybePop(context),
-                  //     onRefresh: () => _refresh(context),
-                  //   ),
-                  // ),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
                     sliver: SliverToBoxAdapter(
@@ -97,30 +94,36 @@ class NotificationScreen extends StatelessWidget {
                     ),
                   ),
 
+                  if (controller.error != null)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                      sliver: SliverToBoxAdapter(
+                        child: _ErrorBanner(
+                          message: controller.error!,
+                          onClose: controller.clearError,
+                        ),
+                      ),
+                    ),
+
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     sliver: SliverToBoxAdapter(
                       child: _InboxContainer(
-                        child: Column(
-                          children: [
-                            _CategoryRow(
-                              icon: Icons.notifications_active_outlined,
-                              iconColor: const Color(0xFF1A73E8),
-                              iconBackground: const Color(0xFFE8F0FE),
-                              title: 'New notifications',
-                              subtitle: controller.unreadCount == 0
-                                  ? 'No unread updates'
-                                  : '${controller.unreadCount} unread update${controller.unreadCount == 1 ? '' : 's'}',
-                              count: controller.unreadCount,
-                            ),
-                          ],
+                        child: _CategoryRow(
+                          icon: Icons.notifications_active_outlined,
+                          title: 'New notifications',
+                          subtitle: controller.unreadCount == 0
+                              ? 'No unread updates'
+                              : '${controller.unreadCount} unread update'
+                                    '${controller.unreadCount == 1 ? '' : 's'}',
+                          count: controller.unreadCount,
                         ),
                       ),
                     ),
                   ),
 
-                  const SliverPadding(
-                    padding: EdgeInsets.fromLTRB(20, 28, 20, 10),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
                     sliver: SliverToBoxAdapter(
                       child: _SectionLabel(title: 'NEW'),
                     ),
@@ -160,10 +163,10 @@ class NotificationScreen extends StatelessWidget {
                                     ),
                                   ),
                                   if (index < controller.unread.length - 1)
-                                    const Divider(
+                                    Divider(
                                       height: 1,
                                       indent: 62,
-                                      color: Color(0xFFE6E9EE),
+                                      color: context.appColors.border,
                                     ),
                                 ],
                               );
@@ -173,8 +176,8 @@ class NotificationScreen extends StatelessWidget {
                       ),
                     ),
 
-                  const SliverPadding(
-                    padding: EdgeInsets.fromLTRB(20, 30, 20, 10),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 30, 20, 10),
                     sliver: SliverToBoxAdapter(
                       child: _SectionLabel(title: 'EARLIER'),
                     ),
@@ -213,10 +216,10 @@ class NotificationScreen extends StatelessWidget {
                                     ),
                                   ),
                                   if (index < controller.earlier.length - 1)
-                                    const Divider(
+                                    Divider(
                                       height: 1,
                                       indent: 62,
-                                      color: Color(0xFFE6E9EE),
+                                      color: context.appColors.border,
                                     ),
                                 ],
                               );
@@ -237,126 +240,6 @@ class NotificationScreen extends StatelessWidget {
   }
 }
 
-class _GmailHeader extends StatelessWidget {
-  final int unreadCount;
-  final bool loading;
-  final VoidCallback onBack;
-  final VoidCallback onRefresh;
-
-  const _GmailHeader({
-    required this.unreadCount,
-    required this.loading,
-    required this.onBack,
-    required this.onRefresh,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Container(
-        height: 58,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEAF1FB),
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Row(
-          children: [
-            IconButton(
-              tooltip: 'Back',
-              onPressed: onBack,
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 20,
-                color: Color(0xFF3C4043),
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Expanded(
-              child: Text(
-                'Search notifications',
-                style: TextStyle(
-                  color: Color(0xFF5F6368),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            if (loading)
-              const Padding(
-                padding: EdgeInsets.only(right: 15),
-                child: SizedBox(
-                  width: 19,
-                  height: 19,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppConstants.primary,
-                  ),
-                ),
-              )
-            else
-              IconButton(
-                tooltip: 'Refresh',
-                onPressed: onRefresh,
-                icon: const Icon(
-                  Icons.refresh_rounded,
-                  color: Color(0xFF3C4043),
-                ),
-              ),
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 39,
-                  height: 39,
-                  margin: const EdgeInsets.only(right: 4),
-                  decoration: const BoxDecoration(
-                    color: AppConstants.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.notifications_none_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-                if (unreadCount > 0)
-                  Positioned(
-                    top: -3,
-                    right: 0,
-                    child: Container(
-                      constraints: const BoxConstraints(minWidth: 18),
-                      height: 18,
-                      padding: const EdgeInsets.symmetric(horizontal: 5),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD93025),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFFEAF1FB),
-                          width: 2,
-                        ),
-                      ),
-                      child: Text(
-                        unreadCount > 99 ? '99+' : '$unreadCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _InboxTitleRow extends StatelessWidget {
   final int unreadCount;
   final VoidCallback? onMarkAllRead;
@@ -370,11 +253,10 @@ class _InboxTitleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Text(
             'Inbox',
-            style: TextStyle(
-              color: Color(0xFF202124),
+            style: context.appText.displaySmall?.copyWith(
               fontSize: 29,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.5,
@@ -388,9 +270,9 @@ class _InboxTitleRow extends StatelessWidget {
           ),
           child: Text(
             unreadCount == 0 ? 'All read' : 'Mark all read',
-            style: TextStyle(
+            style: context.appText.bodyMedium?.copyWith(
               color: unreadCount == 0
-                  ? const Color(0xFF9AA0A6)
+                  ? context.appColors.textMuted
                   : AppConstants.primary,
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -413,9 +295,9 @@ class _InboxContainer extends StatelessWidget {
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appColors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE6E9EE)),
+        border: Border.all(color: context.appColors.border),
       ),
       child: child,
     );
@@ -424,16 +306,12 @@ class _InboxContainer extends StatelessWidget {
 
 class _CategoryRow extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
-  final Color iconBackground;
   final String title;
   final String subtitle;
   final int count;
 
   const _CategoryRow({
     required this.icon,
-    required this.iconColor,
-    required this.iconBackground,
     required this.title,
     required this.subtitle,
     required this.count,
@@ -449,10 +327,10 @@ class _CategoryRow extends StatelessWidget {
             width: 43,
             height: 43,
             decoration: BoxDecoration(
-              color: iconBackground,
+              color: context.appColors.primarySoft,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, size: 23, color: iconColor),
+            child: Icon(icon, size: 23, color: AppConstants.primary),
           ),
           const SizedBox(width: 13),
           Expanded(
@@ -461,8 +339,7 @@ class _CategoryRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Color(0xFF202124),
+                  style: context.appText.titleMedium?.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                   ),
@@ -470,8 +347,8 @@ class _CategoryRow extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: Color(0xFF5F6368),
+                  style: context.appText.bodySmall?.copyWith(
+                    color: context.appColors.textMuted,
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
                   ),
@@ -483,13 +360,13 @@ class _CategoryRow extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
               decoration: BoxDecoration(
-                color: const Color(0xFFE8F0FE),
+                color: context.appColors.primarySoft,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 count > 99 ? '99+' : '$count',
-                style: const TextStyle(
-                  color: Color(0xFF1967D2),
+                style: context.appText.bodySmall?.copyWith(
+                  color: AppConstants.primary,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -510,8 +387,8 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
-        color: Color(0xFF5F6368),
+      style: context.appText.bodySmall?.copyWith(
+        color: context.appColors.textMuted,
         fontWeight: FontWeight.w700,
         fontSize: 12,
         letterSpacing: 0.7,
@@ -538,12 +415,11 @@ class _EmptyMailState extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
         child: Column(
           children: [
-            Icon(icon, color: const Color(0xFF9AA0A6), size: 33),
+            Icon(icon, color: context.appColors.textMuted, size: 33),
             const SizedBox(height: 11),
             Text(
               title,
-              style: const TextStyle(
-                color: Color(0xFF202124),
+              style: context.appText.titleMedium?.copyWith(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
               ),
@@ -552,10 +428,52 @@ class _EmptyMailState extends StatelessWidget {
             Text(
               description,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF5F6368), fontSize: 13),
+              style: context.appText.bodySmall?.copyWith(
+                color: context.appColors.textMuted,
+                fontSize: 13,
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onClose;
+
+  const _ErrorBanner({required this.message, required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: context.appColors.danger.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.appColors.danger.withOpacity(0.30)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: context.appColors.danger, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: context.appText.bodySmall?.copyWith(
+                color: context.appColors.danger,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            onPressed: onClose,
+            icon: Icon(Icons.close, size: 18, color: context.appColors.danger),
+          ),
+        ],
       ),
     );
   }

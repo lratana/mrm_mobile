@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppConstants {
+  AppConstants._();
   // Change this to your Laravel API base URL.
   // Android emulator local Laravel: http://10.0.2.2:8000/api
   // iOS simulator local Laravel: http://127.0.0.1:8000/api
@@ -36,4 +37,15 @@ class AppConstants {
 
   static const double pagePadding = 18;
   static const double radius = 18;
+
+  // static const double pagePadding = 20;
+
+  // Brand colors: these can remain consistent in light/dark mode.
+  // static const Color primary = Color(0xFF0969DA);
+  // static const Color primaryDark = Color(0xFF074EA8);
+  // static const Color mint = Color(0xFFDDF7EC);
+
+  static const double radiusSmall = 12;
+  static const double radiusMedium = 16;
+  static const double radiusLarge = 24;
 }

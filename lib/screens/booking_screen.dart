@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/new_booking_screen.dart';
+import 'package:flutter_application_1/utils/app_palette.dart';
 import 'package:flutter_application_1/utils/app_shimmer.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
@@ -45,28 +45,6 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  Future<void> _openUpdateBooking(BuildContext context, Booking booking) async {
-    if (booking.room == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Room data missing. Cannot update booking.'),
-        ),
-      );
-      return;
-    }
-
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => NewBookingScreen(room: booking.room!, booking: booking),
-      ),
-    );
-
-    if (!context.mounted) return;
-
-    context.read<BookingController>().fetchBookings();
-  }
-
   bool _isAdmin(BuildContext context) {
     return _userLevel(context) == 'admin';
   }
@@ -76,8 +54,35 @@ class _BookingScreenState extends State<BookingScreen> {
     return level == 'user' || level == 'member';
   }
 
-  String _apiDate(DateTime date) {
-    return DateFormat('yyyy-MM-dd HH:mm:ss').format(date);
+  bool _canApprove(Booking booking, bool isAdmin) {
+    final status = booking.status.toLowerCase().trim();
+    return isAdmin && status == 'pending';
+  }
+
+  bool _canReject(Booking booking, bool isAdmin) {
+    final status = booking.status.toLowerCase().trim();
+    return isAdmin && status == 'pending';
+  }
+
+  bool _canUpdate(Booking booking, bool isAdmin, bool isUser) {
+    final status = booking.status.toLowerCase().trim();
+
+    if (isAdmin) {
+      return status == 'pending' ||
+          status == 'approved' ||
+          status == 'cancel_requested';
+    }
+
+    if (isUser) {
+      return status == 'pending';
+    }
+
+    return false;
+  }
+
+  bool _canDelete(Booking booking, bool isUser) {
+    final status = booking.status.toLowerCase().trim();
+    return isUser && status == 'pending';
   }
 
   List<Booking> _sortBookings(List<Booking> bookings) {
@@ -131,35 +136,26 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  bool _canApprove(Booking booking, bool isAdmin) {
-    final status = booking.status.toLowerCase().trim();
-    return isAdmin && status == 'pending';
-  }
-
-  bool _canReject(Booking booking, bool isAdmin) {
-    final status = booking.status.toLowerCase().trim();
-    return isAdmin && status == 'pending';
-  }
-
-  bool _canUpdate(Booking booking, bool isAdmin, bool isUser) {
-    final status = booking.status.toLowerCase().trim();
-
-    if (isAdmin) {
-      return status == 'pending' ||
-          status == 'approved' ||
-          status == 'cancel_requested';
+  Future<void> _openUpdateBooking(BuildContext context, Booking booking) async {
+    if (booking.room == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Room data missing. Cannot update booking.'),
+        ),
+      );
+      return;
     }
 
-    if (isUser) {
-      return status == 'pending';
-    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NewBookingScreen(room: booking.room!, booking: booking),
+      ),
+    );
 
-    return false;
-  }
+    if (!context.mounted) return;
 
-  bool _canDelete(Booking booking, bool isUser) {
-    final status = booking.status.toLowerCase().trim();
-    return isUser && status == 'pending';
+    await context.read<BookingController>().fetchBookings();
   }
 
   Future<void> _approveBooking(BuildContext context, int bookingId) async {
@@ -167,9 +163,11 @@ class _BookingScreenState extends State<BookingScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text(
+          title: Text(
             'Approve booking',
-            style: TextStyle(fontWeight: FontWeight.w800),
+            style: dialogContext.appText.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
           content: const Text('Are you sure you want to approve this booking?'),
           actions: [
@@ -179,13 +177,7 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primary,
-              ),
-              child: const Text(
-                'Approve',
-                style: TextStyle(color: Colors.white),
-              ),
+              child: const Text('Approve'),
             ),
           ],
         );
@@ -194,13 +186,10 @@ class _BookingScreenState extends State<BookingScreen> {
 
     if (confirm != true || !context.mounted) return;
 
-    final ok = await context.read<BookingController>().approveBooking(
-      bookingId,
-    );
+    final controller = context.read<BookingController>();
+    final ok = await controller.approveBooking(bookingId);
 
     if (!context.mounted) return;
-
-    final controller = context.read<BookingController>();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -224,9 +213,11 @@ class _BookingScreenState extends State<BookingScreen> {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
             return AlertDialog(
-              title: const Text(
+              title: Text(
                 'Reject booking',
-                style: TextStyle(fontWeight: FontWeight.w800),
+                style: dialogContext.appText.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               content: TextField(
                 autofocus: true,
@@ -234,7 +225,6 @@ class _BookingScreenState extends State<BookingScreen> {
                 decoration: InputDecoration(
                   hintText: 'Enter reject reason',
                   errorText: errorText,
-                  border: const OutlineInputBorder(),
                 ),
                 onChanged: (value) {
                   reason = value;
@@ -264,11 +254,10 @@ class _BookingScreenState extends State<BookingScreen> {
 
                     Navigator.pop(dialogContext, trimmedReason);
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: const Text(
-                    'Reject',
-                    style: TextStyle(color: Colors.white),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: dialogContext.appColors.danger,
                   ),
+                  child: const Text('Reject'),
                 ),
               ],
             );
@@ -281,14 +270,10 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-    final ok = await context.read<BookingController>().rejectBooking(
-      bookingId,
-      result.trim(),
-    );
+    final controller = context.read<BookingController>();
+    final ok = await controller.rejectBooking(bookingId, result.trim());
 
     if (!context.mounted) return;
-
-    final controller = context.read<BookingController>();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -301,152 +286,16 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Future<void> _updateBooking(BuildContext context, Booking booking) async {
-    final titleController = TextEditingController(text: booking.meetingTitle);
-    final chairmanController = TextEditingController(
-      text: booking.meetingChairman,
-    );
-
-    String? errorText;
-
-    final result = await showDialog<Map<String, String>>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            return AlertDialog(
-              title: const Text(
-                'Update booking',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Meeting Title',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: chairmanController,
-                    decoration: InputDecoration(
-                      labelText: 'Meeting Chairman',
-                      errorText: errorText,
-                      border: const OutlineInputBorder(),
-                    ),
-                    onChanged: (value) {
-                      if (errorText != null && value.trim().isNotEmpty) {
-                        setDialogState(() {
-                          errorText = null;
-                        });
-                      }
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Close'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final chairman = chairmanController.text.trim();
-
-                    if (chairman.isEmpty) {
-                      setDialogState(() {
-                        errorText = 'Chairman is required';
-                      });
-                      return;
-                    }
-
-                    Navigator.pop(dialogContext, {
-                      'meeting_title': titleController.text.trim(),
-                      'meeting_chairman': chairman,
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppConstants.primary,
-                  ),
-                  child: const Text(
-                    'Update',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    titleController.dispose();
-    chairmanController.dispose();
-
-    if (result == null || !context.mounted) return;
-
-    final recurrenceType = booking.recurrenceType.trim().isEmpty
-        ? 'none'
-        : booking.recurrenceType.trim();
-
-    final payload = <String, dynamic>{
-      'room_id': booking.roomId,
-      if (booking.startDatetime != null)
-        'start_datetime': _apiDate(booking.startDatetime!),
-      if (booking.endDatetime != null)
-        'end_datetime': _apiDate(booking.endDatetime!),
-      'recurrence_type': recurrenceType,
-      if (recurrenceType == 'weekly') 'recurrence_days': booking.recurrenceDays,
-      if (recurrenceType != 'none')
-        'recurrence_period': booking.recurrencePeriod ?? 1,
-      if (recurrenceType != 'none' && booking.recurrenceUntil != null)
-        'recurrence_until': DateFormat(
-          'yyyy-MM-dd',
-        ).format(booking.recurrenceUntil!),
-      'meeting_title': result['meeting_title']!.isEmpty
-          ? null
-          : result['meeting_title'],
-      'meeting_chairman': result['meeting_chairman'],
-      'snack_required': booking.snackRequired ? 1 : 0,
-      'snack_note': booking.snackRequired ? booking.snackNote : null,
-      'technician_required': booking.technicianRequired ? 1 : 0,
-      'technician_note': booking.technicianRequired
-          ? booking.technicianNote
-          : null,
-    };
-
-    final ok = await context.read<BookingController>().updateBooking(
-      booking.bookingId,
-      payload,
-    );
-
-    if (!context.mounted) return;
-
-    final controller = context.read<BookingController>();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ok
-              ? 'Booking updated'
-              : controller.error ?? 'Failed to update booking',
-        ),
-      ),
-    );
-  }
-
   Future<void> _deleteBooking(BuildContext context, int bookingId) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text(
+          title: Text(
             'Delete booking',
-            style: TextStyle(fontWeight: FontWeight.w800),
+            style: dialogContext.appText.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
           content: const Text('Are you sure you want to delete this booking?'),
           actions: [
@@ -456,11 +305,10 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text(
-                'Delete',
-                style: TextStyle(color: Colors.white),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: dialogContext.appColors.danger,
               ),
+              child: const Text('Delete'),
             ),
           ],
         );
@@ -469,11 +317,10 @@ class _BookingScreenState extends State<BookingScreen> {
 
     if (confirm != true || !context.mounted) return;
 
-    final ok = await context.read<BookingController>().deleteBooking(bookingId);
+    final controller = context.read<BookingController>();
+    final ok = await controller.deleteBooking(bookingId);
 
     if (!context.mounted) return;
-
-    final controller = context.read<BookingController>();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -486,87 +333,28 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _roleActionButtons({
-    required BuildContext context,
-    required Booking booking,
-    required bool isAdmin,
-    required bool isUser,
-  }) {
-    final actions = <Widget>[];
-
-    if (_canApprove(booking, isAdmin)) {
-      actions.add(
-        _ActionButton(
-          label: 'Approve',
-          icon: Icons.check_circle_outline,
-          color: AppConstants.primary,
-          onTap: () => _approveBooking(context, booking.bookingId),
-        ),
-      );
-    }
-
-    if (_canReject(booking, isAdmin)) {
-      actions.add(
-        _ActionButton(
-          label: 'Reject',
-          icon: Icons.cancel_outlined,
-          color: Colors.red,
-          onTap: () => _rejectBooking(context, booking.bookingId),
-        ),
-      );
-    }
-
-    if (_canUpdate(booking, isAdmin, isUser)) {
-      actions.add(
-        _ActionButton(
-          label: 'Update',
-          icon: Icons.edit_outlined,
-          color: Colors.orange,
-          onTap: () => _updateBooking(context, booking),
-        ),
-      );
-    }
-
-    if (_canDelete(booking, isUser)) {
-      actions.add(
-        _ActionButton(
-          label: 'Delete',
-          icon: Icons.delete_outline,
-          color: Colors.red,
-          onTap: () => _deleteBooking(context, booking.bookingId),
-        ),
-      );
-    }
-
-    if (actions.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-      child: Wrap(spacing: 8, runSpacing: 8, children: actions),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isAdmin = _isAdmin(context);
     final isUser = _isNormalUser(context);
 
     return Scaffold(
-      backgroundColor: AppConstants.bg,
+      backgroundColor: context.appColors.background,
       appBar: AppBar(
-        backgroundColor: AppConstants.bg,
+        backgroundColor: context.appColors.background,
+        foregroundColor: context.appColors.text,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: AppConstants.primaryDark,
-        title: const Text(
+        title: Text(
           'Bookings',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          style: context.appText.titleLarge?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
         ),
         actions: [
           PopupMenuButton<BookingSortType>(
             tooltip: 'Sort bookings',
-            icon: const Icon(Icons.sort),
+            icon: Icon(Icons.sort, color: context.appColors.text),
             initialValue: sortType,
             onSelected: (value) {
               setState(() {
@@ -575,20 +363,31 @@ class _BookingScreenState extends State<BookingScreen> {
             },
             itemBuilder: (context) {
               return BookingSortType.values.map((type) {
+                final selected = sortType == type;
+
                 return PopupMenuItem<BookingSortType>(
                   value: type,
                   child: Row(
                     children: [
-                      if (sortType == type)
-                        const Icon(
-                          Icons.check,
-                          size: 18,
-                          color: AppConstants.primary,
-                        )
-                      else
-                        const SizedBox(width: 18),
+                      SizedBox(
+                        width: 20,
+                        child: selected
+                            ? const Icon(
+                                Icons.check,
+                                size: 18,
+                                color: AppConstants.primary,
+                              )
+                            : null,
+                      ),
                       const SizedBox(width: 8),
-                      Text(_sortLabel(type)),
+                      Text(
+                        _sortLabel(type),
+                        style: context.appText.bodyMedium?.copyWith(
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -600,29 +399,39 @@ class _BookingScreenState extends State<BookingScreen> {
             onPressed: () {
               context.read<BookingController>().fetchBookings();
             },
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh, color: context.appColors.text),
           ),
         ],
       ),
       body: Consumer<BookingController>(
         builder: (context, controller, _) {
           if (controller.loading && controller.bookings.isEmpty) {
-            return const AppShimmerBox(height: 200);
+            return Padding(
+              padding: const EdgeInsets.all(AppConstants.pagePadding),
+              child: AppShimmerBox(height: 200),
+            );
           }
 
           if (controller.bookings.isEmpty) {
             return RefreshIndicator(
               color: AppConstants.primary,
-              onRefresh: () => controller.fetchBookings(),
+              onRefresh: controller.fetchBookings,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 260),
+                padding: const EdgeInsets.all(AppConstants.pagePadding),
+                children: [
+                  const SizedBox(height: 190),
+                  Icon(
+                    Icons.event_busy_outlined,
+                    size: 52,
+                    color: context.appColors.textMuted,
+                  ),
+                  const SizedBox(height: 14),
                   Center(
                     child: Text(
                       'No bookings found',
-                      style: TextStyle(
-                        color: AppConstants.muted,
+                      style: context.appText.titleMedium?.copyWith(
+                        color: context.appColors.textMuted,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -636,78 +445,39 @@ class _BookingScreenState extends State<BookingScreen> {
 
           return RefreshIndicator(
             color: AppConstants.primary,
-            onRefresh: () => controller.fetchBookings(),
+            onRefresh: controller.fetchBookings,
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(AppConstants.pagePadding),
+              padding: const EdgeInsets.fromLTRB(
+                AppConstants.pagePadding,
+                8,
+                AppConstants.pagePadding,
+                24,
+              ),
               itemCount: sortedBookings.length,
               itemBuilder: (context, index) {
                 final booking = sortedBookings[index];
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    BookingCard(
-                      booking: booking,
-                      onUpdate: _canUpdate(booking, isAdmin, isUser)
-                          ? () => _openUpdateBooking(context, booking)
-                          : null,
-                      onDelete: _canDelete(booking, isUser)
-                          ? () => _deleteBooking(context, booking.bookingId)
-                          : null,
-                      onApprove: _canApprove(booking, isAdmin)
-                          ? () => _approveBooking(context, booking.bookingId)
-                          : null,
-                      onReject: _canReject(booking, isAdmin)
-                          ? () => _rejectBooking(context, booking.bookingId)
-                          : null,
-                      isAdmin: isAdmin,
-                    ),
-                  ],
+                return BookingCard(
+                  booking: booking,
+                  onUpdate: _canUpdate(booking, isAdmin, isUser)
+                      ? () => _openUpdateBooking(context, booking)
+                      : null,
+                  onDelete: _canDelete(booking, isUser)
+                      ? () => _deleteBooking(context, booking.bookingId)
+                      : null,
+                  onApprove: _canApprove(booking, isAdmin)
+                      ? () => _approveBooking(context, booking.bookingId)
+                      : null,
+                  onReject: _canReject(booking, isAdmin)
+                      ? () => _rejectBooking(context, booking.bookingId)
+                      : null,
+                  isAdmin: isAdmin,
                 );
               },
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ActionButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 42,
-      child: ElevatedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, color: Colors.white, size: 18),
-        label: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
       ),
     );
   }
