@@ -1,9 +1,10 @@
 import 'dart:io';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/controllers/notification_controller.dart';
 import 'package:flutter_application_1/screens/notification_screen.dart';
+import 'package:flutter_application_1/screens/theme_settings_screen.dart';
+import 'package:flutter_application_1/utils/app_palette.dart';
 import 'package:flutter_application_1/utils/app_shimmer.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -110,7 +111,7 @@ class _RoomScreenState extends State<RoomScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: scaffoldKey,
-      backgroundColor: AppConstants.bg,
+      backgroundColor: context.appColors.background,
       drawer: const _AppDrawer(),
       body: Consumer2<RoomController, BookingController>(
         builder: (context, roomController, bookingController, _) {
@@ -142,14 +143,17 @@ class _RoomScreenState extends State<RoomScreen> {
                     ),
                   )
                 else
-                  const SliverAppBar(
+                  SliverAppBar(
                     pinned: true,
-                    backgroundColor: AppConstants.bg,
-                    foregroundColor: AppConstants.primaryDark,
+                    backgroundColor: context.appColors.background,
+                    foregroundColor: context.appColors.text,
+                    surfaceTintColor: Colors.transparent,
                     elevation: 0,
                     title: Text(
                       'Featured Rooms',
-                      style: TextStyle(fontWeight: FontWeight.w900),
+                      style: context.appText.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
 
@@ -189,8 +193,8 @@ class _RoomScreenState extends State<RoomScreen> {
                             ? 'No available rooms for selected date and time'
                             : 'No rooms found',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppConstants.muted,
+                        style: context.appText.bodyMedium?.copyWith(
+                          color: context.appColors.textMuted,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -231,39 +235,80 @@ class _RoomScreenState extends State<RoomScreen> {
     return [
       SliverToBoxAdapter(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 22),
-            SizedBox(
-              height: 470,
-              child: featured.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No featured rooms',
-                        style: TextStyle(
-                          color: AppConstants.muted,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    )
-                  : PageView.builder(
-                      controller: pageController,
-                      itemCount: featured.length,
-                      onPageChanged: (index) {
-                        setState(() {
-                          currentHero = index;
-                        });
-                      },
-                      itemBuilder: (context, index) {
-                        final room = featured[index];
 
-                        return FeaturedHeroRoomCard(
-                          room: room,
-                          onBook: () => _openBooking(room),
-                        );
-                      },
-                    ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.pagePadding,
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+
+                  final double heroHeight;
+
+                  if (width < 330) {
+                    heroHeight = 290;
+                  } else if (width < 380) {
+                    heroHeight = 275;
+                  } else if (width < 500) {
+                    heroHeight = 260;
+                  } else {
+                    heroHeight = 280;
+                  }
+
+                  return SizedBox(
+                    width: double.infinity,
+                    height: heroHeight,
+                    child: featured.isEmpty
+                        ? Container(
+                            decoration: BoxDecoration(
+                              color: context.appColors.surface,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: context.appColors.border,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'No featured rooms',
+                              style: context.appText.bodyMedium?.copyWith(
+                                color: context.appColors.textMuted,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          )
+                        : PageView.builder(
+                            controller: pageController,
+                            itemCount: featured.length,
+                            onPageChanged: (index) {
+                              setState(() {
+                                currentHero = index;
+                              });
+                            },
+                            itemBuilder: (context, index) {
+                              final room = featured[index];
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                child: FeaturedHeroRoomCard(
+                                  room: room,
+                                  onBook: () => _openBooking(room),
+                                ),
+                              );
+                            },
+                          ),
+                  );
+                },
+              ),
             ),
-            const SizedBox(height: 10),
+
+            const SizedBox(height: 14),
+
             if (featured.isNotEmpty)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -280,64 +325,48 @@ class _RoomScreenState extends State<RoomScreen> {
                       decoration: BoxDecoration(
                         color: active
                             ? AppConstants.primary
-                            : AppConstants.border,
+                            : context.appColors.border,
                         borderRadius: BorderRadius.circular(999),
                       ),
                     );
                   },
                 ),
               ),
+
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppConstants.pagePadding,
-                42,
+                34,
                 AppConstants.pagePadding,
                 20,
               ),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Available Rooms',
-                      style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w900,
-                        color: AppConstants.text,
-                      ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 350;
+
+                  return Text(
+                    'Available Rooms',
+                    style: context.appText.displaySmall?.copyWith(
+                      fontSize: compact ? 24 : 30,
+                      fontWeight: FontWeight.w900,
                     ),
-                  ),
-                  // TextButton(
-                  //   onPressed: () {
-                  //     Navigator.push(
-                  //       context,
-                  //       MaterialPageRoute(
-                  //         builder: (_) => RoomScreen(showHomeHeader: false),
-                  //       ),
-                  //     );
-                  //   },
-                  //   child: const Text(
-                  //     'See More',
-                  //     style: TextStyle(
-                  //       color: AppConstants.primary,
-                  //       fontWeight: FontWeight.w900,
-                  //     ),
-                  //   ),
-                  // ),
-                ],
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
+
       if (available.isEmpty)
-        const SliverToBoxAdapter(
+        SliverToBoxAdapter(
           child: Padding(
-            padding: EdgeInsets.all(AppConstants.pagePadding),
+            padding: const EdgeInsets.all(AppConstants.pagePadding),
             child: Center(
               child: Text(
                 'No available rooms',
-                style: TextStyle(
-                  color: AppConstants.muted,
+                style: context.appText.bodyMedium?.copyWith(
+                  color: context.appColors.textMuted,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -360,6 +389,7 @@ class _RoomScreenState extends State<RoomScreen> {
             }, childCount: available.length),
           ),
         ),
+
       const SliverToBoxAdapter(child: SizedBox(height: 24)),
     ];
   }
@@ -395,6 +425,7 @@ class _AppDrawer extends StatelessWidget {
     String name = 'User';
     String email = '';
     String? photoUrl;
+
     try {
       final json = (user as dynamic?)?.toJson();
 
@@ -405,8 +436,12 @@ class _AppDrawer extends StatelessWidget {
       }
     } catch (_) {}
 
+    final safePhotoUrl = photoUrl != null && photoUrl.trim().isNotEmpty
+        ? photoUrl
+        : 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=0D8ABC&color=fff';
+
     return Drawer(
-      backgroundColor: AppConstants.bg,
+      backgroundColor: context.appColors.background,
       child: SafeArea(
         child: Column(
           children: [
@@ -423,10 +458,7 @@ class _AppDrawer extends StatelessWidget {
                         CircleAvatar(
                           radius: 28,
                           backgroundColor: Colors.white,
-                          backgroundImage: NetworkImage(
-                            photoUrl ??
-                                'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=0D8ABC&color=fff',
-                          ),
+                          backgroundImage: NetworkImage(safePhotoUrl),
                         ),
                         Positioned(
                           right: 0,
@@ -434,14 +466,14 @@ class _AppDrawer extends StatelessWidget {
                           child: Container(
                             height: 23,
                             width: 23,
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               shape: BoxShape.circle,
                               color: AppConstants.primary,
                             ),
                             child: const Icon(
                               Icons.camera_alt,
-                              size: 20,
-                              color: AppConstants.bg,
+                              size: 16,
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -487,9 +519,7 @@ class _AppDrawer extends StatelessWidget {
                   _DrawerItem(
                     icon: Icons.home_outlined,
                     title: 'Home',
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
+                    onTap: () => Navigator.pop(context),
                   ),
                   _DrawerItem(
                     icon: Icons.person_outline,
@@ -498,47 +528,58 @@ class _AppDrawer extends StatelessWidget {
                   ),
                   _DrawerItem(
                     icon: Icons.settings_outlined,
-                    title: 'Settings',
-                    onTap: () => _openPage(context, const SettingsScreen()),
+                    title: 'Appearance',
+                    onTap: () =>
+                        _openPage(context, const ThemeSettingsScreen()),
                   ),
-                  ExpansionTile(
-                    leading: const Icon(
-                      Icons.more_horiz,
-                      color: AppConstants.primary,
+                  Theme(
+                    data: Theme.of(
+                      context,
+                    ).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      leading: const Icon(
+                        Icons.more_horiz,
+                        color: AppConstants.primary,
+                      ),
+                      iconColor: AppConstants.primary,
+                      collapsedIconColor: context.appColors.textMuted,
+                      title: Text(
+                        'Other',
+                        style: context.appText.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      childrenPadding: const EdgeInsets.only(left: 18),
+                      children: [
+                        _DrawerItem(
+                          icon: Icons.info_outline,
+                          title: 'About App',
+                          onTap: () => _openPage(context, const AboutScreen()),
+                        ),
+                        _DrawerItem(
+                          icon: Icons.help_outline,
+                          title: 'Help & Support',
+                          onTap: () => _openPage(context, const HelpScreen()),
+                        ),
+                        _DrawerItem(
+                          icon: Icons.privacy_tip_outlined,
+                          title: 'Privacy Policy',
+                          onTap: () =>
+                              _openPage(context, const PrivacyScreen()),
+                        ),
+                      ],
                     ),
-                    title: const Text(
-                      'Other',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    childrenPadding: const EdgeInsets.only(left: 18),
-                    children: [
-                      _DrawerItem(
-                        icon: Icons.info_outline,
-                        title: 'About App',
-                        onTap: () => _openPage(context, const AboutScreen()),
-                      ),
-                      _DrawerItem(
-                        icon: Icons.help_outline,
-                        title: 'Help & Support',
-                        onTap: () => _openPage(context, const HelpScreen()),
-                      ),
-                      _DrawerItem(
-                        icon: Icons.privacy_tip_outlined,
-                        title: 'Privacy Policy',
-                        onTap: () => _openPage(context, const PrivacyScreen()),
-                      ),
-                    ],
                   ),
                 ],
               ),
             ),
 
-            const Divider(height: 1),
+            Divider(height: 1, color: context.appColors.border),
 
             _DrawerItem(
               icon: Icons.logout,
               title: 'Logout',
-              color: Colors.red,
+              color: context.appColors.danger,
               onTap: () => _logout(context),
             ),
 
@@ -707,14 +748,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final imageProvider = _profileImageProvider();
 
     return Scaffold(
-      backgroundColor: AppConstants.bg,
+      backgroundColor: context.appColors.background,
       appBar: AppBar(
-        backgroundColor: AppConstants.bg,
-        elevation: 0,
-        foregroundColor: AppConstants.primaryDark,
-        title: const Text(
+        title: Text(
           'Profile',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          style: context.appText.titleLarge?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
         ),
       ),
       body: ListView(
@@ -723,9 +763,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.appColors.surface,
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppConstants.border),
+              border: Border.all(color: context.appColors.border),
             ),
             child: Column(
               children: [
@@ -733,7 +773,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     CircleAvatar(
                       radius: 54,
-                      backgroundColor: AppConstants.softBlue,
+                      backgroundColor: context.appColors.primarySoft,
                       backgroundImage: imageProvider,
                       child: imageProvider == null
                           ? const Icon(
@@ -741,7 +781,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               color: AppConstants.primary,
                               size: 58,
                             )
-                          : null, // show nothing while loading network image
+                          : null,
                     ),
                     Positioned(
                       right: 0,
@@ -755,7 +795,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           decoration: BoxDecoration(
                             color: AppConstants.primary,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
+                            border: Border.all(
+                              color: context.appColors.surface,
+                              width: 3,
+                            ),
                           ),
                           child: const Icon(
                             Icons.camera_alt,
@@ -811,18 +854,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           )
                         : const Icon(Icons.save_outlined, color: Colors.white),
+                    label: const Text('Update Profile'),
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: auth.loading
+                        ? null
+                        : () async {
+                            await context.read<AuthController>().logout();
+
+                            if (!context.mounted) return;
+
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LoginScreen(),
+                              ),
+                              (_) => false,
+                            );
+                          },
+                    icon: const Icon(Icons.logout, color: Colors.white),
                     label: const Text(
-                      'Update Profile',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                      ),
+                      'Logout',
+                      style: TextStyle(color: Colors.white),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                      backgroundColor: context.appColors.danger,
                     ),
                   ),
                 ),
@@ -853,23 +916,10 @@ class _ProfileInput extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      style: context.appText.bodyMedium,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppConstants.primary),
-        filled: true,
-        fillColor: AppConstants.bg,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppConstants.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppConstants.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppConstants.primary, width: 1.4),
-        ),
       ),
     );
   }
@@ -890,18 +940,21 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final itemColor = color ?? AppConstants.text;
+    final itemColor = color ?? context.appColors.text;
 
     return ListTile(
       leading: Icon(icon, color: color ?? AppConstants.primary),
       title: Text(
         title,
-        style: TextStyle(color: itemColor, fontWeight: FontWeight.w800),
+        style: context.appText.bodyMedium?.copyWith(
+          color: itemColor,
+          fontWeight: FontWeight.w800,
+        ),
       ),
-      trailing: const Icon(
+      trailing: Icon(
         Icons.chevron_right,
         size: 18,
-        color: AppConstants.muted,
+        color: context.appColors.textMuted,
       ),
       onTap: onTap,
     );
@@ -916,22 +969,25 @@ class _TopToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer(
-      builder: (context, _, __) {
-        final unreadCount = context.watch<NotificationController>().unreadCount;
+    final unreadCount = context.watch<NotificationController>().unreadCount;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 390;
+        final veryCompact = constraints.maxWidth < 340;
 
         return Container(
           padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 28,
-            right: 28,
-            bottom: 16,
+            top: MediaQuery.of(context).padding.top + 12,
+            left: compact ? 14 : 28,
+            right: compact ? 14 : 28,
+            bottom: 12,
           ),
           decoration: BoxDecoration(
-            color: AppConstants.bg,
+            color: context.appColors.background,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: .08),
+                color: context.appColors.shadow,
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
@@ -939,35 +995,49 @@ class _TopToolbar extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _CircleIcon(icon: Icons.menu, onTap: onMenuTap),
+              _CircleIcon(icon: Icons.menu, onTap: onMenuTap, compact: compact),
+
               const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
+
+              if (!veryCompact) ...[
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: compact ? 9 : 14,
+                    vertical: compact ? 7 : 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: context.appColors.surface,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: context.appColors.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.language,
+                        size: compact ? 17 : 20,
+                        color: AppConstants.primary,
+                      ),
+                      SizedBox(width: compact ? 4 : 8),
+                      Text(
+                        compact ? 'EN' : 'EN 🇺🇸',
+                        style: context.appText.bodyMedium?.copyWith(
+                          fontSize: compact ? 12 : 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AppConstants.border),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.language, color: AppConstants.primary),
-                    SizedBox(width: 8),
-                    Text(
-                      'EN 🇺🇸',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 18),
+                SizedBox(width: compact ? 6 : 18),
+              ],
+
               Stack(
                 clipBehavior: Clip.none,
                 children: [
                   IconButton(
+                    tooltip: 'Notifications',
+                    visualDensity: VisualDensity.compact,
                     icon: const Icon(
                       Icons.notifications_none,
                       color: AppConstants.primary,
@@ -983,49 +1053,36 @@ class _TopToolbar extends StatelessWidget {
                   ),
                   if (unreadCount > 0)
                     Positioned(
-                      top: 4,
-                      right: 4,
+                      top: 0,
+                      right: 0,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
                         constraints: const BoxConstraints(
                           minWidth: 18,
                           minHeight: 18,
                         ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: context.appColors.danger,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: context.appColors.background,
+                          ),
+                        ),
                         child: Text(
                           unreadCount > 99 ? '99+' : '$unreadCount',
+                          textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
-                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
                 ],
-              ),
-              const SizedBox(width: 18),
-              IconButton(
-                tooltip: 'Logout',
-                onPressed: () async {
-                  await context.read<AuthController>().logout();
-
-                  if (!context.mounted) return;
-
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    (_) => false,
-                  );
-                },
-                icon: const Icon(Icons.logout, color: AppConstants.primary),
               ),
             ],
           ),
@@ -1038,21 +1095,28 @@ class _TopToolbar extends StatelessWidget {
 class _CircleIcon extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
+  final bool compact;
 
-  const _CircleIcon({required this.icon, this.onTap});
+  const _CircleIcon({required this.icon, this.onTap, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
+    final size = compact ? 44.0 : 52.0;
+
     return Material(
-      color: Colors.white,
+      color: context.appColors.surface,
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
         child: SizedBox(
-          width: 52,
-          height: 52,
-          child: Icon(icon, color: AppConstants.primary, size: 30),
+          width: size,
+          height: size,
+          child: Icon(
+            icon,
+            color: AppConstants.primary,
+            size: compact ? 25 : 30,
+          ),
         ),
       ),
     );
@@ -1076,27 +1140,11 @@ class _SearchAndFilters extends StatelessWidget {
           controller: controller,
           onSubmitted: onSubmitted,
           textInputAction: TextInputAction.search,
-          decoration: InputDecoration(
+          style: context.appText.bodyMedium,
+          decoration: const InputDecoration(
             hintText: 'Search workspaces, buildings...',
-            prefixIcon: const Icon(Icons.search),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(vertical: 16),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppConstants.border),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppConstants.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: AppConstants.primary,
-                width: 1.4,
-              ),
-            ),
+            prefixIcon: Icon(Icons.search),
+            contentPadding: EdgeInsets.symmetric(vertical: 16),
           ),
         ),
         const SizedBox(height: 16),
@@ -1105,7 +1153,6 @@ class _SearchAndFilters extends StatelessWidget {
           child: Row(
             children: [
               _FilterChip(text: 'Sort by', selected: true, icon: Icons.tune),
-              SizedBox(width: 10),
               SizedBox(width: 10),
               _FilterChip(text: 'Capacity'),
               SizedBox(width: 10),
@@ -1127,27 +1174,30 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final backgroundColor = selected
+        ? AppConstants.primary
+        : context.appColors.primarySoft;
+
+    final foregroundColor = selected ? Colors.white : context.appColors.text;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: selected ? AppConstants.primary : AppConstants.softBlue,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
+        border: selected ? null : Border.all(color: context.appColors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(
-              icon,
-              color: selected ? Colors.white : AppConstants.text,
-              size: 16,
-            ),
+            Icon(icon, color: foregroundColor, size: 16),
             const SizedBox(width: 5),
           ],
           Text(
             text,
-            style: TextStyle(
-              color: selected ? Colors.white : AppConstants.text,
+            style: context.appText.bodyMedium?.copyWith(
+              color: foregroundColor,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -1223,41 +1273,42 @@ class _SimplePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppConstants.bg,
+      backgroundColor: context.appColors.background,
       appBar: AppBar(
-        backgroundColor: AppConstants.bg,
-        elevation: 0,
-        foregroundColor: AppConstants.primaryDark,
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(
+          title,
+          style: context.appText.titleLarge?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
       ),
       body: Center(
         child: Container(
           margin: const EdgeInsets.all(AppConstants.pagePadding),
           padding: const EdgeInsets.all(26),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.appColors.surface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppConstants.border),
+            border: Border.all(color: context.appColors.border),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const SizedBox(height: 4),
               Icon(icon, color: AppConstants.primary, size: 54),
               const SizedBox(height: 14),
               Text(
                 title,
-                style: const TextStyle(
-                  color: AppConstants.primaryDark,
+                style: context.appText.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w900,
-                  fontSize: 24,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 description,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppConstants.muted,
+                style: context.appText.bodyMedium?.copyWith(
+                  color: context.appColors.textMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),

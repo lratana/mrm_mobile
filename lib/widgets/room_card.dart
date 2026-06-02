@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/utils/app_palette.dart';
 
 import '../models/room_model.dart';
 import '../utils/constants.dart';
@@ -134,7 +135,7 @@ class RatingBadge extends StatelessWidget {
 
 class FeaturedHeroRoomCard extends StatelessWidget {
   final Room room;
-  final VoidCallback? onBook;
+  final VoidCallback onBook;
 
   const FeaturedHeroRoomCard({
     super.key,
@@ -142,116 +143,317 @@ class FeaturedHeroRoomCard extends StatelessWidget {
     required this.onBook,
   });
 
+  bool get _isUnavailable {
+    final status = room.status.toString().toLowerCase().trim();
+
+    return status == 'booked' ||
+        status == 'busy' ||
+        status == 'unavailable' ||
+        status == 'reserved' ||
+        !room.isBookable;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isBookable = room.isBookable;
+    final String? roomImageUrl = room.imageUrl;
+    final hasImage = roomImageUrl != null && roomImageUrl.trim().isNotEmpty;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .06),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Stack(
-            children: [
-              RoomImageBox(
-                url: room.imageUrl,
-                height: 230,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(22),
-                ),
-              ),
-              Positioned(
-                right: 18,
-                top: 18,
-                child: RatingBadge(rating: room.rating),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 330;
+        final veryCompact = constraints.maxWidth < 290;
+
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                Text(
-                  room.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
+                if (hasImage)
+                  Image.network(
+                    roomImageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return _HeroImageFallback();
+                    },
+                  )
+                else
+                  const _HeroImageFallback(),
+
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.10),
+                        Colors.black.withOpacity(0.18),
+                        Colors.black.withOpacity(0.78),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      color: AppConstants.muted,
+
+                Positioned(
+                  left: compact ? 12 : 16,
+                  top: compact ? 12 : 16,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 9 : 11,
+                      vertical: compact ? 5 : 7,
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        room.location,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          color: AppConstants.muted,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _InfoPill(
-                      icon: Icons.groups,
-                      text: '${room.capacity} People',
-                    ),
-                    const _InfoPill(icon: Icons.wifi, text: 'Fiber Internet'),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                SizedBox(
-                  width: double.infinity,
-                  height: 58,
-                  child: ElevatedButton(
-                    onPressed: isBookable ? onBook : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primary,
-                      disabledBackgroundColor: AppConstants.softBlue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                    decoration: BoxDecoration(
+                      color: _isUnavailable
+                          ? Colors.red.withOpacity(0.92)
+                          : Colors.green.withOpacity(0.92),
+                      borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      isBookable ? 'Book Now' : 'Currently Busy',
+                      _isUnavailable ? 'Booked' : 'Available',
                       style: TextStyle(
-                        fontSize: 22,
-                        color: isBookable ? Colors.white : AppConstants.muted,
-                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        fontSize: compact ? 10 : 11,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
+                ),
+
+                Positioned(
+                  left: compact ? 12 : 16,
+                  right: compact ? 12 : 16,
+                  bottom: compact ? 12 : 16,
+                  child: veryCompact
+                      ? _CompactHeroContent(
+                          room: room,
+                          isUnavailable: _isUnavailable,
+                          onBook: onBook,
+                        )
+                      : _StandardHeroContent(
+                          room: room,
+                          compact: compact,
+                          isUnavailable: _isUnavailable,
+                          onBook: onBook,
+                        ),
                 ),
               ],
             ),
           ),
-        ],
+        );
+      },
+    );
+  }
+}
+
+class _HeroImageFallback extends StatelessWidget {
+  const _HeroImageFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppConstants.primary.withOpacity(0.14),
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.meeting_room_rounded,
+        size: 60,
+        color: AppConstants.primary,
       ),
     );
+  }
+}
+
+class _StandardHeroContent extends StatelessWidget {
+  final Room room;
+  final bool compact;
+  final bool isUnavailable;
+  final VoidCallback onBook;
+
+  const _StandardHeroContent({
+    required this.room,
+    required this.compact,
+    required this.isUnavailable,
+    required this.onBook,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: _HeroRoomInformation(room: room, compact: compact),
+        ),
+        const SizedBox(width: 10),
+        _HeroBookButton(
+          compact: compact,
+          isUnavailable: isUnavailable,
+          onBook: onBook,
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactHeroContent extends StatelessWidget {
+  final Room room;
+  final bool isUnavailable;
+  final VoidCallback onBook;
+
+  const _CompactHeroContent({
+    required this.room,
+    required this.isUnavailable,
+    required this.onBook,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _HeroRoomInformation(room: room, compact: true),
+        const SizedBox(height: 10),
+        _HeroBookButton(
+          compact: true,
+          expand: true,
+          isUnavailable: isUnavailable,
+          onBook: onBook,
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroRoomInformation extends StatelessWidget {
+  final Room room;
+  final bool compact;
+
+  const _HeroRoomInformation({required this.room, required this.compact});
+
+  @override
+  Widget build(BuildContext context) {
+    final locationText = room.location.toString().trim();
+    final capacityText = '${room.capacity} seats';
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          room.name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: compact ? 18 : 21,
+            fontWeight: FontWeight.w900,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 7),
+        Row(
+          children: [
+            const Icon(
+              Icons.location_on_outlined,
+              size: 15,
+              color: Colors.white70,
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                locationText.isEmpty ? 'No location' : locationText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: compact ? 11 : 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        Row(
+          children: [
+            const Icon(Icons.groups_outlined, size: 15, color: Colors.white70),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                capacityText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: compact ? 11 : 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroBookButton extends StatelessWidget {
+  final bool compact;
+  final bool expand;
+  final bool isUnavailable;
+  final VoidCallback onBook;
+
+  const _HeroBookButton({
+    required this.compact,
+    required this.isUnavailable,
+    required this.onBook,
+    this.expand = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final button = SizedBox(
+      height: compact ? 40 : 44,
+      child: ElevatedButton(
+        onPressed: isUnavailable ? null : onBook,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppConstants.primary,
+          disabledBackgroundColor: Colors.grey.withOpacity(0.85),
+          foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(horizontal: compact ? 11 : 15),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(
+          isUnavailable ? 'Booked' : 'Book Now',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: compact ? 12 : 13,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+
+    if (expand) {
+      return SizedBox(width: double.infinity, child: button);
+    }
+
+    return button;
   }
 }
 
@@ -301,105 +503,201 @@ class CompactRoomCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isBookable = room.isBookable;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppConstants.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 370;
+
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.all(compact ? 12 : 14),
+          decoration: BoxDecoration(
+            color: context.appColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: context.appColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: context.appColors.shadow,
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
+          child: compact
+              ? _CompactRoomVerticalLayout(
+                  room: room,
+                  isBookable: isBookable,
+                  onBook: onBook,
+                )
+              : _CompactRoomHorizontalLayout(
+                  room: room,
+                  isBookable: isBookable,
+                  onBook: onBook,
+                ),
+        );
+      },
+    );
+  }
+}
+
+class _CompactRoomHorizontalLayout extends StatelessWidget {
+  final Room room;
+  final bool isBookable;
+  final VoidCallback? onBook;
+
+  const _CompactRoomHorizontalLayout({
+    required this.room,
+    required this.isBookable,
+    required this.onBook,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        RoomImageBox(
+          url: room.imageUrl,
+          width: 86,
+          height: 86,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        const SizedBox(width: 14),
+        Expanded(child: _CompactRoomInfo(room: room)),
+        const SizedBox(width: 10),
+        _CompactBookButton(isBookable: isBookable, onBook: onBook),
+      ],
+    );
+  }
+}
+
+class _CompactRoomVerticalLayout extends StatelessWidget {
+  final Room room;
+  final bool isBookable;
+  final VoidCallback? onBook;
+
+  const _CompactRoomVerticalLayout({
+    required this.room,
+    required this.isBookable,
+    required this.onBook,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            RoomImageBox(
+              url: room.imageUrl,
+              width: 74,
+              height: 74,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: _CompactRoomInfo(room: room, compact: true)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: _CompactBookButton(isBookable: isBookable, onBook: onBook),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactRoomInfo extends StatelessWidget {
+  final Room room;
+  final bool compact;
+
+  const _CompactRoomInfo({required this.room, this.compact = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          room.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: context.appText.titleMedium?.copyWith(
+            color: context.appColors.text,
+            fontSize: compact ? 16 : 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 6),
+        _CompactRoomInfoRow(
+          icon: Icons.location_on_outlined,
+          text: room.location.trim().isEmpty ? 'No location' : room.location,
+        ),
+        const SizedBox(height: 5),
+        _CompactRoomInfoRow(
+          icon: Icons.groups_outlined,
+          text: '${room.capacity} People',
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactRoomInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _CompactRoomInfoRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: context.appColors.textMuted),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.appText.bodySmall?.copyWith(
+              color: context.appColors.textMuted,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactBookButton extends StatelessWidget {
+  final bool isBookable;
+  final VoidCallback? onBook;
+
+  const _CompactBookButton({required this.isBookable, required this.onBook});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: isBookable ? onBook : null,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppConstants.primary,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: context.appColors.surfaceSoft,
+        disabledForegroundColor: context.appColors.textMuted,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
       ),
-      child: Row(
-        children: [
-          RoomImageBox(
-            url: room.imageUrl,
-            width: 92,
-            height: 92,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  room.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 18,
-                      color: AppConstants.muted,
-                    ),
-                    const SizedBox(width: 3),
-                    Expanded(
-                      child: Text(
-                        room.location,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: AppConstants.muted),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.groups,
-                      size: 18,
-                      color: AppConstants.muted,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        '${room.capacity} People',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: AppConstants.muted),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          ElevatedButton(
-            onPressed: isBookable ? onBook : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppConstants.primary,
-              disabledBackgroundColor: AppConstants.softBlue,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            ),
-            child: Text(
-              isBookable ? 'Book' : 'Busy',
-              style: TextStyle(
-                color: isBookable ? Colors.white : AppConstants.muted,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
+      child: Text(
+        isBookable ? 'Book' : 'Busy',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: context.appText.labelLarge?.copyWith(
+          color: isBookable ? Colors.white : context.appColors.textMuted,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -418,21 +716,27 @@ class FeaturedRoomListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final disabled = !room.isBookable;
+    final statusText = room.status?.trim().isNotEmpty == true
+        ? room.status!
+        : 'Busy';
 
     return Container(
+      width: double.infinity,
       margin: const EdgeInsets.only(bottom: 22),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appColors.surface,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.appColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .05),
+            color: context.appColors.shadow,
             blurRadius: 16,
             offset: const Offset(0, 5),
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Stack(
             children: [
@@ -443,11 +747,13 @@ class FeaturedRoomListCard extends StatelessWidget {
                   top: Radius.circular(16),
                 ),
               ),
+
               Positioned(
                 top: 12,
                 right: 12,
                 child: RatingBadge(rating: room.rating),
               ),
+
               if (disabled)
                 Positioned(
                   left: 12,
@@ -458,83 +764,101 @@ class FeaturedRoomListCard extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: .9),
+                      color: context.appColors.surface.withOpacity(0.94),
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: context.appColors.border),
                     ),
                     child: Text(
-                      room.status ?? 'Busy',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      statusText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.appText.bodySmall?.copyWith(
+                        color: context.appColors.text,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
             ],
           ),
+
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
                       child: Text(
                         room.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: context.appText.titleLarge?.copyWith(
+                          color: context.appColors.text,
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
-                          color: AppConstants.primaryDark,
                         ),
                       ),
                     ),
-                    const Icon(
-                      Icons.groups,
+                    const SizedBox(width: 10),
+                    Icon(
+                      Icons.groups_outlined,
                       size: 16,
-                      color: AppConstants.muted,
+                      color: context.appColors.textMuted,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '${room.capacity}',
-                      style: const TextStyle(
-                        color: AppConstants.muted,
+                      style: context.appText.bodySmall?.copyWith(
+                        color: context.appColors.textMuted,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+
+                const SizedBox(height: 7),
+
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.location_on_outlined,
                       size: 17,
-                      color: AppConstants.muted,
+                      color: context.appColors.textMuted,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        room.location,
+                        room.location.trim().isEmpty
+                            ? 'No location'
+                            : room.location,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: AppConstants.text),
+                        style: context.appText.bodyMedium?.copyWith(
+                          color: context.appColors.textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                if (room.featureNames.isNotEmpty)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: room.featureNames
-                          .take(3)
-                          .map((name) => FeatureChip(name))
-                          .toList(),
-                    ),
+
+                if (room.featureNames.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: room.featureNames
+                        .take(3)
+                        .map((name) => FeatureChip(name))
+                        .toList(),
                   ),
+                ],
+
                 const SizedBox(height: 14),
+
                 SizedBox(
                   width: double.infinity,
                   height: 48,
@@ -542,15 +866,20 @@ class FeaturedRoomListCard extends StatelessWidget {
                     onPressed: disabled ? null : onBook,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppConstants.primary,
-                      disabledBackgroundColor: AppConstants.softBlue,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: context.appColors.surfaceSoft,
+                      disabledForegroundColor: context.appColors.textMuted,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     child: Text(
                       disabled ? 'Booked' : 'Book Now',
-                      style: TextStyle(
-                        color: disabled ? AppConstants.muted : Colors.white,
+                      style: context.appText.labelLarge?.copyWith(
+                        color: disabled
+                            ? context.appColors.textMuted
+                            : Colors.white,
                         fontWeight: FontWeight.w800,
                       ),
                     ),

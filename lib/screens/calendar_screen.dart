@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../controllers/calendar_controller.dart';
 import '../models/booking_model.dart';
+import '../utils/app_palette.dart';
 import '../utils/constants.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -25,12 +26,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     Future.microtask(() {
       if (!mounted) return;
+
       context.read<CalendarController>().fetchMonth(DateTime.now());
     });
   }
 
   Future<void> _refreshCalendar(BuildContext context) async {
     final controller = context.read<CalendarController>();
+
     await controller.fetchMonth(controller.focusedDay);
   }
 
@@ -39,6 +42,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final controller = context.read<CalendarController>();
 
     controller.selectDay(today, today);
+
     await controller.fetchMonth(today);
   }
 
@@ -47,7 +51,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     CalendarController controller,
     int direction,
   ) async {
-    DateTime next;
+    late final DateTime next;
 
     if (viewMode == 0) {
       next = DateTime(
@@ -62,6 +66,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     controller.selectDay(next, next);
+
     await controller.fetchMonth(next);
   }
 
@@ -143,25 +148,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final end = week.last;
 
       if (start.month == end.month) {
-        return '${DateFormat('MMM d').format(start)} - ${DateFormat('d, yyyy').format(end)}';
+        return '${DateFormat('MMM d').format(start)} - '
+            '${DateFormat('d, yyyy').format(end)}';
       }
 
-      return '${DateFormat('MMM d').format(start)} - ${DateFormat('MMM d, yyyy').format(end)}';
+      return '${DateFormat('MMM d').format(start)} - '
+          '${DateFormat('MMM d, yyyy').format(end)}';
     }
 
     return DateFormat('EEEE, MMMM d').format(controller.selectedDay);
   }
 
-  Color _statusColor(String status) {
-    final value = status.toLowerCase().trim();
-
-    if (value == 'approved') return Colors.green;
-    if (value == 'pending') return Colors.orange;
-    if (value == 'rejected') return Colors.red;
-    if (value == 'cancelled') return Colors.grey;
-    if (value == 'cancel_requested') return Colors.blueGrey;
-
-    return AppConstants.primary;
+  Color _statusColor(BuildContext context, String status) {
+    switch (status.toLowerCase().trim()) {
+      case 'approved':
+        return context.appColors.success;
+      case 'pending':
+        return context.appColors.warning;
+      case 'rejected':
+        return context.appColors.danger;
+      case 'cancelled':
+        return context.appColors.textMuted;
+      case 'cancel_requested':
+        return AppConstants.primary;
+      case 'completed':
+        return context.appColors.success;
+      default:
+        return AppConstants.primary;
+    }
   }
 
   String _bookingTitle(Booking booking) {
@@ -182,13 +196,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return DateFormat('hh:mm a').format(start.toLocal());
     }
 
-    return '${DateFormat('hh:mm a').format(start.toLocal())} - ${DateFormat('hh:mm a').format(end.toLocal())}';
+    return '${DateFormat('hh:mm a').format(start.toLocal())} - '
+        '${DateFormat('hh:mm a').format(end.toLocal())}';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
+      backgroundColor: context.appColors.background,
       body: SafeArea(
         child: Consumer<CalendarController>(
           builder: (context, controller, _) {
@@ -225,8 +240,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         days: _monthDays(controller.focusedDay),
                         focusedDay: controller.focusedDay,
                         selectedDay: controller.selectedDay,
-                        eventCounter: (day) =>
-                            _eventCountForDay(controller, day),
+                        eventCounter: (day) {
+                          return _eventCountForDay(controller, day);
+                        },
                         onSelectDay: (day) async {
                           controller.selectDay(day, day);
 
@@ -242,8 +258,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       child: _IOSWeekCalendar(
                         days: _weekDays(controller.selectedDay),
                         selectedDay: controller.selectedDay,
-                        eventCounter: (day) =>
-                            _eventCountForDay(controller, day),
+                        eventCounter: (day) {
+                          return _eventCountForDay(controller, day);
+                        },
                         onSelectDay: (day) {
                           controller.selectDay(day, day);
                         },
@@ -256,7 +273,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         events: selectedEvents,
                         titleBuilder: _bookingTitle,
                         timeBuilder: _bookingTime,
-                        colorBuilder: _statusColor,
+                        colorBuilder: (status) {
+                          return _statusColor(context, status);
+                        },
                       ),
                     ),
 
@@ -289,7 +308,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             booking: booking,
                             title: _bookingTitle(booking),
                             time: _bookingTime(booking),
-                            color: _statusColor(booking.status),
+                            color: _statusColor(context, booking.status),
                           );
                         }, childCount: selectedEvents.length),
                       ),
@@ -326,7 +345,7 @@ class _IOSHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFF2F2F7),
+      color: context.appColors.background,
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,6 +367,7 @@ class _IOSHeader extends StatelessWidget {
               ),
               const Spacer(),
               IconButton(
+                tooltip: 'Previous',
                 visualDensity: VisualDensity.compact,
                 onPressed: onPrevious,
                 icon: const Icon(
@@ -356,6 +376,7 @@ class _IOSHeader extends StatelessWidget {
                 ),
               ),
               IconButton(
+                tooltip: 'Next',
                 visualDensity: VisualDensity.compact,
                 onPressed: onNext,
                 icon: const Icon(
@@ -365,7 +386,9 @@ class _IOSHeader extends StatelessWidget {
               ),
             ],
           ),
+
           const SizedBox(height: 4),
+
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -374,56 +397,64 @@ class _IOSHeader extends StatelessWidget {
                   title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: context.appText.displaySmall?.copyWith(
+                    color: context.appColors.text,
                     fontSize: 31,
                     height: 1.08,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black,
                   ),
                 ),
               ),
               if (loading)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: _CalendarScreenState.appleRed,
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 5),
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: _CalendarScreenState.appleRed,
+                    ),
                   ),
                 ),
             ],
           ),
+
           const SizedBox(height: 14),
-          CupertinoSegmentedControl<int>(
-            groupValue: viewMode,
-            selectedColor: _CalendarScreenState.appleRed,
-            unselectedColor: Colors.white,
-            borderColor: _CalendarScreenState.appleRed,
-            pressedColor: _CalendarScreenState.appleRed.withOpacity(.12),
-            children: const {
-              0: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                child: Text(
-                  'Month',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+
+          SizedBox(
+            width: double.infinity,
+            child: CupertinoSegmentedControl<int>(
+              groupValue: viewMode,
+              selectedColor: _CalendarScreenState.appleRed,
+              unselectedColor: context.appColors.surface,
+              borderColor: _CalendarScreenState.appleRed,
+              pressedColor: _CalendarScreenState.appleRed.withOpacity(0.12),
+              children: const {
+                0: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  child: Text(
+                    'Month',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
-              ),
-              1: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                child: Text(
-                  'Week',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                1: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  child: Text(
+                    'Week',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
-              ),
-              2: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                child: Text(
-                  'Day',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                2: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  child: Text(
+                    'Day',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
-              ),
-            },
-            onValueChanged: onViewChanged,
+              },
+              onValueChanged: onViewChanged,
+            ),
           ),
         ],
       ),
@@ -456,13 +487,9 @@ class _IOSMonthCalendar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return _CalendarSurface(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-      ),
       child: Column(
         children: [
           const Row(
@@ -476,7 +503,9 @@ class _IOSMonthCalendar extends StatelessWidget {
               _IOSWeekdayLabel('S'),
             ],
           ),
+
           const SizedBox(height: 6),
+
           GridView.builder(
             itemCount: days.length,
             shrinkWrap: true,
@@ -517,8 +546,8 @@ class _IOSMonthCalendar extends StatelessWidget {
                               : today
                               ? _CalendarScreenState.appleRed
                               : currentMonth
-                              ? Colors.black
-                              : Colors.grey.shade400,
+                              ? context.appColors.text
+                              : context.appColors.textMuted.withOpacity(0.55),
                           fontWeight: selected || today
                               ? FontWeight.w800
                               : FontWeight.w600,
@@ -539,8 +568,8 @@ class _IOSMonthCalendar extends StatelessWidget {
                             margin: const EdgeInsets.symmetric(horizontal: 1),
                             decoration: BoxDecoration(
                               color: selected
-                                  ? _CalendarScreenState.appleRed
-                                  : Colors.grey.shade500,
+                                  ? Colors.white
+                                  : context.appColors.textMuted,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -581,13 +610,9 @@ class _IOSWeekCalendar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return _CalendarSurface(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-      ),
       child: Row(
         children: days.map((day) {
           final selected = _isSameDay(day, selectedDay);
@@ -602,8 +627,8 @@ class _IOSWeekCalendar extends StatelessWidget {
                 children: [
                   Text(
                     DateFormat('E').format(day).substring(0, 1),
-                    style: const TextStyle(
-                      color: Colors.grey,
+                    style: context.appText.bodySmall?.copyWith(
+                      color: context.appColors.textMuted,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -620,7 +645,7 @@ class _IOSWeekCalendar extends StatelessWidget {
                             ? Colors.white
                             : today
                             ? _CalendarScreenState.appleRed
-                            : Colors.black,
+                            : context.appColors.text,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -638,8 +663,8 @@ class _IOSWeekCalendar extends StatelessWidget {
                           margin: const EdgeInsets.symmetric(horizontal: 1),
                           decoration: BoxDecoration(
                             color: selected
-                                ? _CalendarScreenState.appleRed
-                                : Colors.grey.shade500,
+                                ? Colors.white
+                                : context.appColors.textMuted,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -675,13 +700,9 @@ class _IOSDayView extends StatelessWidget {
   Widget build(BuildContext context) {
     final hours = List.generate(13, (index) => 7 + index);
 
-    return Container(
+    return _CalendarSurface(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-      ),
       child: Column(
         children: [
           Padding(
@@ -704,8 +725,8 @@ class _IOSDayView extends StatelessWidget {
                 Expanded(
                   child: Text(
                     DateFormat('EEEE\nMMMM d, yyyy').format(selectedDay),
-                    style: const TextStyle(
-                      color: Colors.black,
+                    style: context.appText.titleLarge?.copyWith(
+                      color: context.appColors.text,
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                       height: 1.15,
@@ -715,13 +736,14 @@ class _IOSDayView extends StatelessWidget {
               ],
             ),
           ),
+
           if (events.isEmpty)
             Padding(
               padding: const EdgeInsets.all(20),
               child: Text(
                 'No events scheduled today.',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
+                style: context.appText.bodyMedium?.copyWith(
+                  color: context.appColors.textMuted,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -731,6 +753,7 @@ class _IOSDayView extends StatelessWidget {
               children: hours.map((hour) {
                 final hourEvents = events.where((booking) {
                   final start = booking.startDatetime;
+
                   return start != null && start.hour == hour;
                 }).toList();
 
@@ -768,6 +791,7 @@ class _DayHourRow extends StatelessWidget {
     if (value == 0) return '12 AM';
     if (value < 12) return '$value AM';
     if (value == 12) return '12 PM';
+
     return '${value - 12} PM';
   }
 
@@ -776,7 +800,7 @@ class _DayHourRow extends StatelessWidget {
     return Container(
       constraints: const BoxConstraints(minHeight: 58),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        border: Border(top: BorderSide(color: context.appColors.border)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -788,9 +812,8 @@ class _DayHourRow extends StatelessWidget {
               child: Text(
                 _hourLabel(hour),
                 textAlign: TextAlign.right,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
+                style: context.appText.bodySmall?.copyWith(
+                  color: context.appColors.textMuted,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -810,7 +833,9 @@ class _DayHourRow extends StatelessWidget {
                           margin: const EdgeInsets.only(bottom: 6),
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(.12),
+                            color: color.withOpacity(
+                              context.isDarkMode ? 0.18 : 0.12,
+                            ),
                             borderRadius: BorderRadius.circular(14),
                             border: Border(
                               left: BorderSide(color: color, width: 4),
@@ -821,7 +846,7 @@ class _DayHourRow extends StatelessWidget {
                             children: [
                               Text(
                                 timeBuilder(booking),
-                                style: TextStyle(
+                                style: context.appText.bodySmall?.copyWith(
                                   color: color,
                                   fontWeight: FontWeight.w900,
                                   fontSize: 12,
@@ -830,9 +855,11 @@ class _DayHourRow extends StatelessWidget {
                               const SizedBox(height: 3),
                               Text(
                                 titleBuilder(booking),
-                                style: TextStyle(
-                                  color: color.withOpacity(.95),
-                                  fontWeight: FontWeight.w900,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.appText.titleMedium?.copyWith(
+                                  color: context.appColors.text,
+                                  fontWeight: FontWeight.w800,
                                   fontSize: 15,
                                 ),
                               ),
@@ -860,8 +887,8 @@ class _IOSWeekdayLabel extends StatelessWidget {
       child: Center(
         child: Text(
           label,
-          style: const TextStyle(
-            color: Colors.grey,
+          style: context.appText.bodySmall?.copyWith(
+            color: context.appColors.textMuted,
             fontWeight: FontWeight.w900,
             fontSize: 12,
           ),
@@ -890,17 +917,20 @@ class _SelectedDateHeader extends StatelessWidget {
               isToday
                   ? 'Today'
                   : DateFormat('EEEE, MMMM d').format(selectedDay),
-              style: const TextStyle(
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: context.appText.headlineSmall?.copyWith(
+                color: context.appColors.text,
                 fontSize: 24,
                 fontWeight: FontWeight.w900,
-                color: Colors.black,
               ),
             ),
           ),
+          const SizedBox(width: 10),
           Text(
-            '$count event${count > 1 ? 's' : ''}',
-            style: TextStyle(
-              color: Colors.grey.shade600,
+            '$count event${count == 1 ? '' : 's'}',
+            style: context.appText.bodySmall?.copyWith(
+              color: context.appColors.textMuted,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -915,25 +945,21 @@ class _EmptyAgendaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return _CalendarSurface(
       margin: const EdgeInsets.fromLTRB(16, 6, 16, 28),
       padding: const EdgeInsets.all(26),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-      ),
       child: Column(
         children: [
           Icon(
             CupertinoIcons.calendar_badge_plus,
-            color: Colors.grey.shade400,
+            color: context.appColors.textMuted,
             size: 42,
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'No Events',
-            style: TextStyle(
-              color: Colors.black,
+            style: context.appText.titleLarge?.copyWith(
+              color: context.appColors.text,
               fontWeight: FontWeight.w900,
               fontSize: 18,
             ),
@@ -941,8 +967,9 @@ class _EmptyAgendaCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'There are no bookings for this date.',
-            style: TextStyle(
-              color: Colors.grey.shade600,
+            textAlign: TextAlign.center,
+            style: context.appText.bodyMedium?.copyWith(
+              color: context.appColors.textMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -973,8 +1000,16 @@ class _IOSAgendaCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appColors.surface,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.appColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: context.appColors.shadow,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: IntrinsicHeight(
         child: Row(
@@ -996,7 +1031,7 @@ class _IOSAgendaCard extends StatelessWidget {
                   children: [
                     Text(
                       time,
-                      style: TextStyle(
+                      style: context.appText.bodySmall?.copyWith(
                         color: color,
                         fontSize: 13,
                         fontWeight: FontWeight.w900,
@@ -1007,56 +1042,22 @@ class _IOSAgendaCard extends StatelessWidget {
                       title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.black,
+                      style: context.appText.titleMedium?.copyWith(
+                        color: context.appColors.text,
                         fontSize: 17,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(
-                          CupertinoIcons.location_solid,
-                          size: 15,
-                          color: Colors.grey.shade600,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            roomName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
+                    _AgendaInfoRow(
+                      icon: CupertinoIcons.location_solid,
+                      text: roomName,
                     ),
                     if (chairman.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            CupertinoIcons.person_fill,
-                            size: 15,
-                            color: Colors.grey.shade600,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              chairman,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.grey.shade700,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
+                      _AgendaInfoRow(
+                        icon: CupertinoIcons.person_fill,
+                        text: chairman,
                       ),
                     ],
                     const SizedBox(height: 8),
@@ -1068,16 +1069,18 @@ class _IOSAgendaCard extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(.12),
+                          color: color.withOpacity(
+                            context.isDarkMode ? 0.18 : 0.12,
+                          ),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
-                          booking.status.toUpperCase(),
-                          style: TextStyle(
+                          booking.status.replaceAll('_', ' ').toUpperCase(),
+                          style: context.appText.bodySmall?.copyWith(
                             color: color,
                             fontSize: 11,
                             fontWeight: FontWeight.w900,
-                            letterSpacing: .3,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ),
@@ -1089,6 +1092,67 @@ class _IOSAgendaCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AgendaInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _AgendaInfoRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: context.appColors.textMuted),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.appText.bodySmall?.copyWith(
+              color: context.appColors.textMuted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CalendarSurface extends StatelessWidget {
+  final EdgeInsetsGeometry margin;
+  final EdgeInsetsGeometry padding;
+  final Widget child;
+
+  const _CalendarSurface({
+    required this.margin,
+    required this.padding,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: margin,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: context.appColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: context.appColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: context.appColors.shadow,
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: child,
     );
   }
 }
