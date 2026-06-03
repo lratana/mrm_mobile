@@ -85,22 +85,42 @@ class _BookingScreenState extends State<BookingScreen> {
     return isUser && status == 'pending';
   }
 
-  List<Booking> _sortBookings(List<Booking> bookings) {
+  List<Booking> _sortBookings(
+    List<Booking> bookings,
+    bool isAdmin,
+    bool isUser,
+    String? status,
+  ) {
     final sorted = List<Booking>.from(bookings);
 
     switch (sortType) {
       case BookingSortType.newest:
-        sorted.sort(
-          (a, b) => (b.startDatetime ?? DateTime(1900)).compareTo(
-            a.startDatetime ?? DateTime(1900),
-          ),
-        );
+        sorted.sort((a, b) {
+          final aDate = a.createdAt ?? DateTime(1900);
+          final bDate = b.createdAt ?? DateTime(1900);
+
+          if (isAdmin) {
+            // Admin: pending first, then by oldest
+            if (a.status.toLowerCase() == 'pending' &&
+                b.status.toLowerCase() != 'pending')
+              return -1;
+            if (b.status.toLowerCase() == 'pending' &&
+                a.status.toLowerCase() != 'pending')
+              return 1;
+            // Both pending or both non-pending → oldest first
+            return aDate.compareTo(bDate);
+          } else if (isUser) {
+            // Regular user → latest first
+            return bDate.compareTo(aDate);
+          }
+          return 0; // fallback
+        });
         break;
 
       case BookingSortType.oldest:
         sorted.sort(
-          (a, b) => (a.startDatetime ?? DateTime(1900)).compareTo(
-            b.startDatetime ?? DateTime(1900),
+          (a, b) => (a.createdAt ?? DateTime(1900)).compareTo(
+            b.createdAt ?? DateTime(1900),
           ),
         );
         break;
@@ -337,7 +357,7 @@ class _BookingScreenState extends State<BookingScreen> {
   Widget build(BuildContext context) {
     final isAdmin = _isAdmin(context);
     final isUser = _isNormalUser(context);
-
+    final isStatus = sortType == BookingSortType.status;
     return Scaffold(
       backgroundColor: context.appColors.background,
       appBar: AppBar(
@@ -441,7 +461,12 @@ class _BookingScreenState extends State<BookingScreen> {
             );
           }
 
-          final sortedBookings = _sortBookings(controller.bookings);
+          final sortedBookings = _sortBookings(
+            controller.bookings,
+            isAdmin,
+            isUser,
+            isStatus ? 'pending' : null,
+          );
 
           return RefreshIndicator(
             color: AppConstants.primary,

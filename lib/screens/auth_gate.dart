@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
 import '../controllers/notification_controller.dart';
+import '../utils/app_palette.dart';
 import '../utils/constants.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
@@ -17,13 +18,13 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   bool _notificationPollingRunning = false;
-  bool _syncScheduled = false;
+  bool _notificationSyncInProgress = false;
 
   void _syncNotificationState({
     required bool isAuthenticated,
     required bool isOnline,
   }) {
-    if (_syncScheduled) return;
+    if (_notificationSyncInProgress) return;
 
     final shouldStart =
         isAuthenticated && isOnline && !_notificationPollingRunning;
@@ -33,30 +34,56 @@ class _AuthGateState extends State<AuthGate> {
 
     if (!shouldStart && !shouldStop) return;
 
-    _syncScheduled = true;
+    _notificationSyncInProgress = true;
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _syncScheduled = false;
-
-      if (!mounted) return;
-
-      final notificationController = context.read<NotificationController>();
-
-      if (isAuthenticated && isOnline && !_notificationPollingRunning) {
-        await notificationController.requestNotificationPermission();
-
+      try {
         if (!mounted) return;
 
-        notificationController.startRealtimeNotifications();
-        _notificationPollingRunning = true;
-      } else if ((!isAuthenticated || !isOnline) &&
-          _notificationPollingRunning) {
-        notificationController.stopRealtimeNotifications();
-        _notificationPollingRunning = false;
+        final notificationController = context.read<NotificationController>();
 
-        if (!isAuthenticated) {
-          await notificationController.clearNotifications();
+        if (shouldStart) {
+          /*
+            This initializes flutter_local_notifications and requests
+            Android 13+/iOS notification permission.
+
+            Even if permission is denied, polling should still start so
+            your in-app NotificationScreen and bottom navigation count
+            continue to update.
+          */
+          await notificationController.requestNotificationPermission();
+
+          if (!mounted) return;
+
+          final currentAuth = context.read<AuthController>();
+          final currentNetwork = context.read<CheckNetwork>();
+
+          /*
+            The user may log out or lose internet while the permission
+            dialog is open. Check the latest state before starting polling.
+          */
+          if (currentAuth.isAuthenticated &&
+              currentNetwork.isOnline &&
+              !_notificationPollingRunning) {
+            notificationController.startRealtimeNotifications();
+            _notificationPollingRunning = true;
+          }
         }
+
+        if (shouldStop && _notificationPollingRunning) {
+          notificationController.stopRealtimeNotifications();
+          _notificationPollingRunning = false;
+
+          /*
+            Offline: keep the last loaded notification data and badge.
+            Logout: clear user-specific notification data and system badge.
+          */
+          if (!isAuthenticated) {
+            await notificationController.clearNotifications();
+          }
+        }
+      } finally {
+        _notificationSyncInProgress = false;
       }
     });
   }
@@ -67,9 +94,11 @@ class _AuthGateState extends State<AuthGate> {
     final auth = context.watch<AuthController>();
 
     if (!network.initialized) {
-      return const Scaffold(
-        backgroundColor: AppConstants.bg,
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: context.appColors.background,
+        body: const Center(
+          child: CircularProgressIndicator(color: AppConstants.primary),
+        ),
       );
     }
 
@@ -96,7 +125,7 @@ class _NoInternetScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppConstants.bg,
+      backgroundColor: context.appColors.background,
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -104,36 +133,70 @@ class _NoInternetScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.wifi_off_rounded,
-                  size: 80,
-                  color: Colors.grey,
+                Container(
+                  width: 112,
+                  height: 112,
+                  decoration: BoxDecoration(
+                    color: context.appColors.surface,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: context.appColors.border),
+                  ),
+                  child: Icon(
+                    Icons.wifi_off_rounded,
+                    size: 56,
+                    color: context.appColors.textMuted,
+                  ),
                 ),
-                const SizedBox(height: 20),
-                const Text(
+
+                const SizedBox(height: 22),
+
+                Text(
                   'No Internet Connection',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
+                  style: context.appText.titleLarge?.copyWith(
+                    color: context.appColors.text,
+                    fontSize: 23,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-                const SizedBox(height: 12),
+
+                const SizedBox(height: 10),
+
                 Text(
                   'Please check your Wi-Fi or mobile data connection.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15, color: Colors.grey[700]),
+                  style: context.appText.bodyMedium?.copyWith(
+                    color: context.appColors.textMuted,
+                    fontSize: 15,
+                  ),
                 ),
+
                 const SizedBox(height: 28),
+
                 SizedBox(
                   width: double.infinity,
+                  height: 52,
                   child: ElevatedButton.icon(
                     onPressed: () async {
                       await context.read<CheckNetwork>().checkNetwork();
                     },
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Try Again'),
+                    icon: const Icon(
+                      Icons.refresh_rounded,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      'Try Again',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppConstants.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(13),
+                      ),
                     ),
                   ),
                 ),

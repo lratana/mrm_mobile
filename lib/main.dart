@@ -13,6 +13,7 @@ import 'screens/auth_gate.dart';
 import 'services/check_network.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const RoomBookingApp());
 }
 

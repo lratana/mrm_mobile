@@ -19,7 +19,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
@@ -33,13 +33,60 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
 
-    Future.microtask(() {
+    WidgetsBinding.instance.addObserver(this);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
 
-      context.read<RoomController>().fetchRooms();
-      context.read<BookingController>().fetchBookings();
-      context.read<CalendarController>().fetchMonth(DateTime.now());
+      await Future.wait([
+        context.read<RoomController>().fetchRooms(),
+        context.read<BookingController>().fetchBookings(),
+        context.read<CalendarController>().fetchMonth(DateTime.now()),
+
+        // Refresh notification list immediately on HomeScreen load.
+        // Do not show popup alerts for items already existing at login.
+        context.read<NotificationController>().fetchNotifications(
+          silent: true,
+          showAlertsForNewItems: false,
+        ),
+      ]);
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed && mounted) {
+      debugPrint('App resumed: refreshing notifications');
+
+      context.read<NotificationController>().fetchNotifications(
+        silent: true,
+        showAlertsForNewItems: true,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _changeTab(int index) async {
+    setState(() {
+      _currentIndex = index;
+    });
+
+    // Notifications tab index = 3.
+    if (index == 3) {
+      debugPrint('Notifications tab opened: refreshing notifications');
+
+      await context.read<NotificationController>().fetchNotifications(
+        silent: false,
+        showAlertsForNewItems: false,
+      );
+    }
   }
 
   @override
@@ -52,11 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: NavigationBar(
         height: 72,
         selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        onDestinationSelected: _changeTab,
         backgroundColor: context.appColors.surface,
         indicatorColor: context.appColors.primarySoft,
         destinations: [

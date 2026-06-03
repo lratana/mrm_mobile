@@ -13,12 +13,22 @@ class NotificationController extends ChangeNotifier {
   final FlutterLocalNotificationsPlugin _notificationPlugin =
       FlutterLocalNotificationsPlugin();
 
-  static const int _systemNotificationId = 1001;
+  // One silent system notification used to maintain unread badge count.
+  static const int _badgeNotificationId = 1001;
 
-  static const String _channelId = 'unread_notifications_channel';
-  static const String _channelName = 'Unread Notifications';
-  static const String _channelDescription =
+  // Existing silent badge channel.
+  static const String _badgeChannelId = 'unread_notifications_channel';
+  static const String _badgeChannelName = 'Unread Notifications';
+  static const String _badgeChannelDescription =
       'Shows the number of unread room booking notifications';
+
+  // New visible alert channel.
+  // Keep a new channel ID because an old Android low-importance channel
+  // cannot be changed into a high-priority sound/vibration channel.
+  static const String _alertChannelId = 'room_booking_alerts_v1';
+  static const String _alertChannelName = 'Room Booking Alerts';
+  static const String _alertChannelDescription =
+      'Shows alerts for new room booking notifications';
 
   List<AppNotification> notifications = [];
 
@@ -26,13 +36,17 @@ class NotificationController extends ChangeNotifier {
   bool _fetching = false;
   bool _pluginInitialized = false;
   bool _notificationPermissionGranted = false;
+  bool _hasLoadedInitialNotifications = false;
 
   String? error;
 
   Timer? _timer;
 
-  // Prevents a request started before logout from restoring old data.
+  // Prevents requests started before logout from restoring old data.
   int _requestGeneration = 0;
+
+  // Stores unread notification IDs already seen by this app session.
+  final Set<String> _knownUnreadIds = <String>{};
 
   int get unreadCount {
     return notifications.where((notification) => notification.isUnread).length;
@@ -61,12 +75,12 @@ class NotificationController extends ChangeNotifier {
       '@mipmap/ic_launcher',
     );
 
-    const iosSettings = DarwinInitializationSettings(
+    const darwinSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
       defaultPresentAlert: false,
-      defaultPresentBadge: true,
+      defaultPresentBadge: false,
       defaultPresentSound: false,
       defaultPresentBanner: false,
       defaultPresentList: false,
@@ -74,8 +88,8 @@ class NotificationController extends ChangeNotifier {
 
     const initializationSettings = InitializationSettings(
       android: androidSettings,
-      iOS: iosSettings,
-      macOS: iosSettings,
+      iOS: darwinSettings,
+      macOS: darwinSettings,
     );
 
     await _notificationPlugin.initialize(
@@ -86,21 +100,33 @@ class NotificationController extends ChangeNotifier {
     );
 
     if (Platform.isAndroid) {
-      const androidChannel = AndroidNotificationChannel(
-        _channelId,
-        _channelName,
-        description: _channelDescription,
+      final androidPlugin = _notificationPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+
+      const badgeChannel = AndroidNotificationChannel(
+        _badgeChannelId,
+        _badgeChannelName,
+        description: _badgeChannelDescription,
         importance: Importance.low,
         playSound: false,
         enableVibration: false,
         showBadge: true,
       );
 
-      await _notificationPlugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.createNotificationChannel(androidChannel);
+      const alertChannel = AndroidNotificationChannel(
+        _alertChannelId,
+        _alertChannelName,
+        description: _alertChannelDescription,
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
+      );
+
+      await androidPlugin?.createNotificationChannel(badgeChannel);
+      await androidPlugin?.createNotificationChannel(alertChannel);
     }
 
     _pluginInitialized = true;
@@ -117,8 +143,8 @@ class NotificationController extends ChangeNotifier {
 
       final result = await androidPlugin?.requestNotificationsPermission();
 
-      // On Android versions before runtime notification permission,
-      // the plugin may return null.
+      // Android versions before Android 13 may return null because
+      // runtime notification permission is not required.
       _notificationPermissionGranted = result ?? true;
     } else if (Platform.isIOS) {
       final iosPlugin = _notificationPlugin
@@ -129,7 +155,7 @@ class NotificationController extends ChangeNotifier {
       final result = await iosPlugin?.requestPermissions(
         alert: true,
         badge: true,
-        sound: false,
+        sound: true,
       );
 
       _notificationPermissionGranted = result ?? false;
@@ -142,7 +168,7 @@ class NotificationController extends ChangeNotifier {
       final result = await macPlugin?.requestPermissions(
         alert: true,
         badge: true,
-        sound: false,
+        sound: true,
       );
 
       _notificationPermissionGranted = result ?? false;
@@ -151,7 +177,62 @@ class NotificationController extends ChangeNotifier {
     }
 
     notifyListeners();
+
     return _notificationPermissionGranted;
+  }
+
+  Future<void> _showVisibleAlert(AppNotification notification) async {
+    await initializeSystemNotifications();
+
+    if (!_notificationPermissionGranted) return;
+
+    final notificationId = notification.id.hashCode & 0x7fffffff;
+
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _alertChannelId,
+        _alertChannelName,
+        channelDescription: _alertChannelDescription,
+        importance: Importance.high,
+        priority: Priority.high,
+        channelShowBadge: true,
+        number: unreadCount,
+        playSound: true,
+        enableVibration: true,
+        silent: false,
+        onlyAlertOnce: false,
+        autoCancel: true,
+        ongoing: false,
+      ),
+      iOS: DarwinNotificationDetails(
+        badgeNumber: unreadCount,
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        presentBanner: true,
+        presentList: true,
+      ),
+      macOS: DarwinNotificationDetails(
+        badgeNumber: unreadCount,
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        presentBanner: true,
+        presentList: true,
+      ),
+    );
+
+    await _notificationPlugin.show(
+      id: notificationId,
+      title: notification.title.trim().isEmpty
+          ? 'Room Booking'
+          : notification.title,
+      body: notification.message.trim().isEmpty
+          ? 'You have a new notification.'
+          : notification.message,
+      notificationDetails: details,
+      payload: 'notification:${notification.id}',
+    );
   }
 
   Future<void> _updateSystemBadge() async {
@@ -164,15 +245,13 @@ class NotificationController extends ChangeNotifier {
       return;
     }
 
-    if (!_notificationPermissionGranted) {
-      return;
-    }
+    if (!_notificationPermissionGranted) return;
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        _channelId,
-        _channelName,
-        channelDescription: _channelDescription,
+        _badgeChannelId,
+        _badgeChannelName,
+        channelDescription: _badgeChannelDescription,
         importance: Importance.low,
         priority: Priority.low,
         channelShowBadge: true,
@@ -203,7 +282,7 @@ class NotificationController extends ChangeNotifier {
     );
 
     await _notificationPlugin.show(
-      id: _systemNotificationId,
+      id: _badgeNotificationId,
       title: 'Room Booking',
       body: 'You have $count unread notification${count == 1 ? '' : 's'}.',
       notificationDetails: details,
@@ -214,13 +293,10 @@ class NotificationController extends ChangeNotifier {
   Future<void> _clearSystemBadge() async {
     await initializeSystemNotifications();
 
-    await _notificationPlugin.cancel(id: _systemNotificationId);
+    await _notificationPlugin.cancel(id: _badgeNotificationId);
 
-    if (!_notificationPermissionGranted) {
-      return;
-    }
+    if (!_notificationPermissionGranted) return;
 
-    // iOS/macOS badge clearing requires applying badgeNumber: 0.
     if (Platform.isIOS || Platform.isMacOS) {
       const details = NotificationDetails(
         iOS: DarwinNotificationDetails(
@@ -242,20 +318,24 @@ class NotificationController extends ChangeNotifier {
       );
 
       await _notificationPlugin.show(
-        id: _systemNotificationId,
+        id: _badgeNotificationId,
         title: null,
         body: null,
         notificationDetails: details,
       );
 
-      await _notificationPlugin.cancel(id: _systemNotificationId);
+      await _notificationPlugin.cancel(id: _badgeNotificationId);
     }
   }
 
-  Future<void> fetchNotifications({bool silent = false}) async {
+  Future<void> fetchNotifications({
+    bool silent = false,
+    bool showAlertsForNewItems = true,
+  }) async {
     if (_fetching) return;
 
     _fetching = true;
+
     final requestGeneration = _requestGeneration;
 
     if (!silent) {
@@ -267,18 +347,41 @@ class NotificationController extends ChangeNotifier {
     try {
       final result = await _service.getNotifications();
 
-      if (requestGeneration != _requestGeneration) {
-        return;
-      }
+      if (requestGeneration != _requestGeneration) return;
+
+      final unreadItems = result
+          .where((notification) => notification.isUnread)
+          .toList();
+
+      final unreadIds = unreadItems
+          .map((notification) => notification.id)
+          .toSet();
+
+      final newUnreadItems =
+          _hasLoadedInitialNotifications && showAlertsForNewItems
+          ? unreadItems
+                .where(
+                  (notification) => !_knownUnreadIds.contains(notification.id),
+                )
+                .toList()
+          : <AppNotification>[];
 
       notifications = result;
+
+      _knownUnreadIds
+        ..clear()
+        ..addAll(unreadIds);
+
+      _hasLoadedInitialNotifications = true;
       error = null;
 
       await _updateSystemBadge();
-    } catch (e) {
-      if (requestGeneration != _requestGeneration) {
-        return;
+
+      for (final notification in newUnreadItems) {
+        await _showVisibleAlert(notification);
       }
+    } catch (e) {
+      if (requestGeneration != _requestGeneration) return;
 
       error = _cleanError(e);
     } finally {
@@ -297,11 +400,12 @@ class NotificationController extends ChangeNotifier {
   void startRealtimeNotifications() {
     _timer?.cancel();
 
-    fetchNotifications(silent: true);
+    // Initial load creates the badge/list only, not alerts for old unread items.
+    fetchNotifications(silent: true, showAlertsForNewItems: false);
 
     _timer = Timer.periodic(
       const Duration(seconds: 30),
-      (_) => fetchNotifications(silent: true),
+      (_) => fetchNotifications(silent: true, showAlertsForNewItems: true),
     );
   }
 
@@ -313,7 +417,8 @@ class NotificationController extends ChangeNotifier {
   Future<void> markAsRead(String id) async {
     try {
       await _service.markAsRead(id);
-      await fetchNotifications(silent: true);
+
+      await fetchNotifications(silent: true, showAlertsForNewItems: false);
     } catch (e) {
       error = _cleanError(e);
       notifyListeners();
@@ -323,7 +428,8 @@ class NotificationController extends ChangeNotifier {
   Future<void> markAllAsRead() async {
     try {
       await _service.markAllAsRead();
-      await fetchNotifications(silent: true);
+
+      await fetchNotifications(silent: true, showAlertsForNewItems: false);
     } catch (e) {
       error = _cleanError(e);
       notifyListeners();
@@ -336,7 +442,10 @@ class NotificationController extends ChangeNotifier {
 
       notifications.removeWhere((notification) => notification.id == id);
 
+      _knownUnreadIds.remove(id);
+
       await _updateSystemBadge();
+
       notifyListeners();
     } catch (e) {
       error = _cleanError(e);
@@ -348,6 +457,9 @@ class NotificationController extends ChangeNotifier {
     _requestGeneration++;
 
     notifications.clear();
+    _knownUnreadIds.clear();
+    _hasLoadedInitialNotifications = false;
+
     error = null;
     loading = false;
 
@@ -371,7 +483,9 @@ class NotificationController extends ChangeNotifier {
   @override
   void dispose() {
     stopRealtimeNotifications();
-    _notificationPlugin.cancel(id: _systemNotificationId);
+
+    _notificationPlugin.cancel(id: _badgeNotificationId);
+
     super.dispose();
   }
 }
