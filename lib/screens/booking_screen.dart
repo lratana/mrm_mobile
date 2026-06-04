@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/new_booking_screen.dart';
 import 'package:flutter_application_1/utils/app_palette.dart';
 import 'package:flutter_application_1/utils/app_shimmer.dart';
+import 'package:flutter_application_1/widgets/booking_export_menu.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
@@ -372,6 +373,9 @@ class _BookingScreenState extends State<BookingScreen> {
           ),
         ),
         actions: [
+          BookingExportMenu(
+            bookings: context.watch<BookingController>().bookings,
+          ),
           PopupMenuButton<BookingSortType>(
             tooltip: 'Sort bookings',
             icon: Icon(Icons.sort, color: context.appColors.text),
@@ -498,6 +502,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       ? () => _rejectBooking(context, booking.bookingId)
                       : null,
                   isAdmin: isAdmin,
+                  onShare: () => context.watch<BookingController>().bookings,
                 );
               },
             ),

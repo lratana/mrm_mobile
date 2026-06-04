@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/widgets/booking_export_menu.dart';
 import 'package:intl/intl.dart';
 
 import '../models/booking_model.dart';
@@ -11,6 +12,7 @@ class BookingCard extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onApprove;
   final VoidCallback? onReject;
+  final VoidCallback? onShare;
   final bool isAdmin;
 
   const BookingCard({
@@ -20,6 +22,7 @@ class BookingCard extends StatelessWidget {
     this.onDelete,
     this.onApprove,
     this.onReject,
+    this.onShare,
     this.isAdmin = false,
   });
 
@@ -64,7 +67,8 @@ class BookingCard extends StatelessWidget {
   }
 
   bool get _hasActions {
-    return onUpdate != null ||
+    return onShare != null ||
+        onUpdate != null ||
         onDelete != null ||
         onApprove != null ||
         onReject != null;
@@ -94,8 +98,8 @@ class BookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final start = booking.startDatetime;
-    final end = booking.endDatetime;
+    final start = booking.startDatetime?.toLocal();
+    final end = booking.endDatetime?.toLocal();
 
     final dateFormat = DateFormat('EEE, MMM d');
     final timeFormat = DateFormat('hh:mm a');
@@ -176,6 +180,9 @@ class BookingCard extends StatelessWidget {
                     runSpacing: 8,
                     alignment: WrapAlignment.end,
                     children: [
+                      if (onShare != null)
+                        BookingExportMenu(bookings: [booking]),
+
                       if (onUpdate != null)
                         _ModernActionButton(
                           label: 'Edit',
@@ -185,6 +192,7 @@ class BookingCard extends StatelessWidget {
                           fullWidth: veryCompact,
                           onTap: onUpdate!,
                         ),
+
                       if (onApprove != null)
                         _ModernActionButton(
                           label: 'Approve',
@@ -194,6 +202,7 @@ class BookingCard extends StatelessWidget {
                           fullWidth: veryCompact,
                           onTap: onApprove!,
                         ),
+
                       if (onReject != null)
                         _ModernActionButton(
                           label: 'Reject',
@@ -203,6 +212,7 @@ class BookingCard extends StatelessWidget {
                           fullWidth: veryCompact,
                           onTap: onReject!,
                         ),
+
                       if (onDelete != null)
                         _ModernActionButton(
                           label: 'Delete',
