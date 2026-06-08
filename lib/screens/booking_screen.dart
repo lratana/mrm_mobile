@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/new_booking_screen.dart';
+import 'package:flutter_application_1/services/booking_export_service.dart';
 import 'package:flutter_application_1/utils/app_palette.dart';
 import 'package:flutter_application_1/utils/app_shimmer.dart';
 import 'package:flutter_application_1/widgets/booking_export_menu.dart';
@@ -18,6 +19,262 @@ class BookingScreen extends StatefulWidget {
 
   @override
   State<BookingScreen> createState() => _BookingScreenState();
+}
+
+class _ExtraTimeSheet extends StatelessWidget {
+  final Booking booking;
+
+  const _ExtraTimeSheet({required this.booking});
+
+  String _formatTime(BuildContext context, DateTime dateTime) {
+    return MaterialLocalizations.of(context).formatTimeOfDay(
+      TimeOfDay.fromDateTime(dateTime.toLocal()),
+      alwaysUse24HourFormat: false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentEnd = booking.endDatetime?.toLocal();
+
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(18, 13, 18, 18),
+        decoration: BoxDecoration(
+          color: context.appColors.surface,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: context.appColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: context.appColors.shadow,
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: context.appColors.border,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 19),
+            Row(
+              children: [
+                Container(
+                  width: 49,
+                  height: 49,
+                  decoration: BoxDecoration(
+                    color: context.appColors.primarySoft,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.more_time_rounded,
+                    size: 25,
+                    color: AppConstants.primary,
+                  ),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Add Extra Time',
+                        style: context.appText.titleMedium?.copyWith(
+                          color: context.appColors.text,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Continue your current meeting',
+                        style: context.appText.bodySmall?.copyWith(
+                          color: context.appColors.textMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: context.appColors.surfaceSoft,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 20,
+                    color: context.appColors.textMuted,
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      currentEnd == null
+                          ? 'Current ending time unavailable'
+                          : 'Currently ends at ${_formatTime(context, currentEnd)}',
+                      style: context.appText.bodyMedium?.copyWith(
+                        color: context.appColors.text,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 17),
+            Text(
+              'Select additional hours',
+              style: context.appText.bodyMedium?.copyWith(
+                color: context.appColors.text,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 11),
+            Row(
+              children: [
+                Expanded(
+                  child: _ExtraTimeOption(hours: 1, currentEnd: currentEnd),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: _ExtraTimeOption(hours: 2, currentEnd: currentEnd),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: _ExtraTimeOption(hours: 3, currentEnd: currentEnd),
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: context.appColors.textMuted,
+                  size: 17,
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    'Extra time is added immediately when the room remains available.',
+                    style: context.appText.bodySmall?.copyWith(
+                      color: context.appColors.textMuted,
+                      fontSize: 11,
+                      height: 1.4,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 13),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: context.appColors.textMuted,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExtraTimeOption extends StatelessWidget {
+  final int hours;
+  final DateTime? currentEnd;
+
+  const _ExtraTimeOption({required this.hours, required this.currentEnd});
+
+  String _formatTime(BuildContext context, DateTime dateTime) {
+    return MaterialLocalizations.of(context).formatTimeOfDay(
+      TimeOfDay.fromDateTime(dateTime.toLocal()),
+      alwaysUse24HourFormat: false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final newEnd = currentEnd?.add(Duration(hours: hours));
+
+    return Material(
+      color: context.appColors.primarySoft,
+      borderRadius: BorderRadius.circular(15),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(15),
+        onTap: () {
+          Navigator.pop(context, hours);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 13),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: AppConstants.primary.withOpacity(0.14)),
+          ),
+          child: Column(
+            children: [
+              Text(
+                '+$hours hr',
+                style: context.appText.titleMedium?.copyWith(
+                  color: AppConstants.primary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                newEnd == null ? '' : _formatTime(context, newEnd),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.appText.bodySmall?.copyWith(
+                  color: context.appColors.textMuted,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _BookingScreenState extends State<BookingScreen> {
@@ -79,6 +336,49 @@ class _BookingScreenState extends State<BookingScreen> {
     }
 
     return false;
+  }
+
+  bool _canAddExtraTime(Booking booking, bool allowedRole) {
+    final status = booking.status.toLowerCase().trim();
+    final start = booking.startDatetime;
+    final end = booking.endDatetime;
+    final now = DateTime.now().toLocal();
+
+    debugPrint('========== EXTRA TIME CHECK ==========');
+    debugPrint('Booking ID: ${booking.bookingId}');
+    debugPrint('Allowed role: $allowedRole');
+    debugPrint('Status: "$status"');
+    debugPrint('Start: $start');
+    debugPrint('End: $end');
+    debugPrint('Now: $now');
+
+    if (!allowedRole) {
+      debugPrint('BLOCKED: current account is not user or admin');
+      return false;
+    }
+
+    if (status != 'approved') {
+      debugPrint('BLOCKED: booking status is not approved');
+      return false;
+    }
+
+    if (start == null || end == null) {
+      debugPrint('BLOCKED: startDatetime or endDatetime is null');
+      return false;
+    }
+
+    if (now.isBefore(start)) {
+      debugPrint('BLOCKED: meeting has not started yet');
+      return false;
+    }
+
+    if (!now.isBefore(end)) {
+      debugPrint('BLOCKED: meeting has already ended');
+      return false;
+    }
+
+    debugPrint('ALLOWED: Extra Time button should appear');
+    return true;
   }
 
   bool _canDelete(Booking booking, bool isUser) {
@@ -307,6 +607,68 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
+  Future<void> _openAddExtraTime(BuildContext context, Booking booking) async {
+    final selectedHours = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) {
+        return _ExtraTimeSheet(booking: booking);
+      },
+    );
+
+    if (selectedHours == null || !context.mounted) {
+      return;
+    }
+
+    final controller = context.read<BookingController>();
+
+    final ok = await controller.addExtraTime(
+      id: booking.bookingId,
+      extraHours: selectedHours,
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          backgroundColor: ok
+              ? context.appColors.success
+              : context.appColors.danger,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Row(
+            children: [
+              Icon(
+                ok ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                size: 21,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  ok
+                      ? 'Meeting extended by $selectedHours hour${selectedHours > 1 ? 's' : ''}.'
+                      : controller.error ?? 'Unable to extend meeting time.',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+  }
+
   Future<void> _deleteBooking(BuildContext context, int bookingId) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -487,8 +849,32 @@ class _BookingScreenState extends State<BookingScreen> {
               itemBuilder: (context, index) {
                 final booking = sortedBookings[index];
 
+                final allowedRole = isUser || isAdmin;
+
+                debugPrint('========== BOOKING CARD BUILD ==========');
+                debugPrint('Booking ID: ${booking.bookingId}');
+                debugPrint('isUser: $isUser');
+                debugPrint('isAdmin: $isAdmin');
+                debugPrint('Chairman: ${booking.meetingChairman}');
+                debugPrint('Status: ${booking.status}');
+                debugPrint('controller.submitting: ${controller.submitting}');
+
+                final allowedByBooking = _canAddExtraTime(booking, allowedRole);
+
+                final canExtend = !controller.submitting && allowedByBooking;
+
+                debugPrint('Final canExtend: $canExtend');
+
                 return BookingCard(
                   booking: booking,
+                  onExtend: canExtend
+                      ? () {
+                          debugPrint(
+                            'EXTRA TIME BUTTON TAPPED: ${booking.bookingId}',
+                          );
+                          _openAddExtraTime(context, booking);
+                        }
+                      : null,
                   onUpdate: _canUpdate(booking, isAdmin, isUser)
                       ? () => _openUpdateBooking(context, booking)
                       : null,
@@ -502,7 +888,10 @@ class _BookingScreenState extends State<BookingScreen> {
                       ? () => _rejectBooking(context, booking.bookingId)
                       : null,
                   isAdmin: isAdmin,
-                  onShare: () => context.watch<BookingController>().bookings,
+                  onShare: () => BookingExportService.shareSingleBooking(
+                    context: context,
+                    booking: booking,
+                  ),
                 );
               },
             ),

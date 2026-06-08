@@ -165,6 +165,34 @@ class BookingController extends ChangeNotifier {
     }
   }
 
+  // Admin actions
+  Future<bool> addExtraTime({required int id, required int extraHours}) async {
+    submitting = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final updated = await _service.addExtraTime(
+        id: id,
+        extraHours: extraHours,
+      );
+
+      final index = bookings.indexWhere((booking) => booking.bookingId == id);
+
+      if (index >= 0) {
+        bookings[index] = updated;
+      }
+
+      return true;
+    } catch (e) {
+      error = _cleanError(e);
+      return false;
+    } finally {
+      submitting = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> deleteBooking(int id) async {
     submitting = true;
     error = null;

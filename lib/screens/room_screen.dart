@@ -973,13 +973,13 @@ class _TopToolbar extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 390;
-        final veryCompact = constraints.maxWidth < 340;
+        final veryCompact = constraints.maxWidth < 335;
 
         return Container(
           padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 12,
-            left: compact ? 14 : 28,
-            right: compact ? 14 : 28,
+            top: MediaQuery.of(context).padding.top + 10,
+            left: compact ? 14 : 24,
+            right: compact ? 14 : 24,
             bottom: 12,
           ),
           decoration: BoxDecoration(
@@ -987,106 +987,172 @@ class _TopToolbar extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: context.appColors.shadow,
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+                blurRadius: 18,
+                offset: const Offset(0, 5),
               ),
             ],
           ),
           child: Row(
             children: [
-              _CircleIcon(icon: Icons.menu, onTap: onMenuTap, compact: compact),
-
-              const Spacer(),
+              _CircleIcon(
+                icon: Icons.menu_rounded,
+                onTap: onMenuTap,
+                compact: compact,
+              ),
 
               if (!veryCompact) ...[
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: compact ? 9 : 14,
-                    vertical: compact ? 7 : 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: context.appColors.surface,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: context.appColors.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.language,
-                        size: compact ? 17 : 20,
-                        color: AppConstants.primary,
-                      ),
-                      SizedBox(width: compact ? 4 : 8),
                       Text(
-                        compact ? 'EN' : 'EN 🇺🇸',
-                        style: context.appText.bodyMedium?.copyWith(
-                          fontSize: compact ? 12 : 14,
-                          fontWeight: FontWeight.w800,
+                        'Workspace',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.appText.bodySmall?.copyWith(
+                          color: context.appColors.textMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Meeting Rooms',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.appText.titleMedium?.copyWith(
+                          color: context.appColors.text,
+                          fontSize: compact ? 15 : 17,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(width: compact ? 6 : 18),
-              ],
+              ] else
+                const Spacer(),
 
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  IconButton(
-                    tooltip: 'Notifications',
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(
-                      Icons.notifications_none,
-                      color: AppConstants.primary,
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const NotificationScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: Container(
-                        constraints: const BoxConstraints(
-                          minWidth: 18,
-                          minHeight: 18,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: context.appColors.danger,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: context.appColors.background,
-                          ),
-                        ),
-                        child: Text(
-                          unreadCount > 99 ? '99+' : '$unreadCount',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+              if (!compact) const _LanguagePill(),
+
+              if (!compact) const SizedBox(width: 10),
+
+              _NotificationButton(unreadCount: unreadCount, compact: compact),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _LanguagePill extends StatelessWidget {
+  const _LanguagePill();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 13),
+      decoration: BoxDecoration(
+        color: context.appColors.surface,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: context.appColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: context.appColors.primarySoft,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.language_rounded,
+              size: 17,
+              color: AppConstants.primary,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'EN',
+            style: context.appText.bodySmall?.copyWith(
+              color: context.appColors.text,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(width: 3),
+          Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 17,
+            color: context.appColors.textMuted,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NotificationButton extends StatelessWidget {
+  final int unreadCount;
+  final bool compact;
+
+  const _NotificationButton({required this.unreadCount, required this.compact});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        _CircleIcon(
+          icon: Icons.notifications_none_rounded,
+          compact: compact,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationScreen()),
+            );
+          },
+        ),
+        if (unreadCount > 0)
+          Positioned(
+            top: -2,
+            right: -2,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 19, minHeight: 19),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: context.appColors.danger,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: context.appColors.background,
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: context.appColors.danger.withOpacity(0.20),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                unreadCount > 99 ? '99+' : '$unreadCount',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -1100,21 +1166,26 @@ class _CircleIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = compact ? 44.0 : 52.0;
+    final size = compact ? 46.0 : 50.0;
 
     return Material(
       color: context.appColors.surface,
-      shape: const CircleBorder(),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        customBorder: const CircleBorder(),
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
-        child: SizedBox(
+        child: Container(
           width: size,
           height: size,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: context.appColors.border),
+          ),
+          alignment: Alignment.center,
           child: Icon(
             icon,
             color: AppConstants.primary,
-            size: compact ? 25 : 30,
+            size: compact ? 23 : 25,
           ),
         ),
       ),
@@ -1133,33 +1204,159 @@ class _SearchAndFilters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        TextField(
-          controller: controller,
-          onSubmitted: onSubmitted,
-          textInputAction: TextInputAction.search,
-          style: context.appText.bodyMedium,
-          decoration: const InputDecoration(
-            hintText: 'Search workspaces, buildings...',
-            prefixIcon: Icon(Icons.search),
-            contentPadding: EdgeInsets.symmetric(vertical: 16),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.appColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: context.appColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: context.appColors.shadow,
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
-        ),
-        const SizedBox(height: 16),
-        const SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Find a workspace',
+            style: context.appText.titleMedium?.copyWith(
+              color: context.appColors.text,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Search rooms by name, building or facility',
+            style: context.appText.bodySmall?.copyWith(
+              color: context.appColors.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: controller,
+            onSubmitted: (value) {
+              onSubmitted(value.trim());
+            },
+            textInputAction: TextInputAction.search,
+            style: context.appText.bodyMedium?.copyWith(
+              color: context.appColors.text,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Search workspaces, buildings...',
+              hintStyle: context.appText.bodyMedium?.copyWith(
+                color: context.appColors.textMuted,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 5),
+                child: Icon(
+                  Icons.search_rounded,
+                  color: context.appColors.textMuted,
+                  size: 22,
+                ),
+              ),
+              suffixIcon: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Material(
+                  color: AppConstants.primary,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      onSubmitted(controller.text.trim());
+                    },
+                    child: const SizedBox(
+                      width: 42,
+                      height: 42,
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              filled: true,
+              fillColor: context.appColors.surfaceSoft,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 15,
+                vertical: 16,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: context.appColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: AppConstants.primary,
+                  width: 1.4,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
             children: [
-              _FilterChip(text: 'Sort by', selected: true, icon: Icons.tune),
-              SizedBox(width: 10),
-              _FilterChip(text: 'Capacity'),
-              SizedBox(width: 10),
-              _FilterChip(text: 'Rating'),
+              Text(
+                'Filters',
+                style: context.appText.bodyMedium?.copyWith(
+                  color: context.appColors.text,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Refine results',
+                style: context.appText.bodySmall?.copyWith(
+                  color: context.appColors.textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 11),
+          const SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _FilterChip(
+                  text: 'Sort by',
+                  selected: true,
+                  icon: Icons.tune_rounded,
+                ),
+                SizedBox(width: 9),
+                _FilterChip(
+                  text: 'Capacity',
+                  icon: Icons.people_outline_rounded,
+                ),
+                SizedBox(width: 9),
+                _FilterChip(text: 'Rating', icon: Icons.star_outline_rounded),
+                SizedBox(width: 9),
+                _FilterChip(
+                  text: 'Available',
+                  icon: Icons.event_available_outlined,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1173,30 +1370,38 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = selected
-        ? AppConstants.primary
-        : context.appColors.primarySoft;
-
     final foregroundColor = selected ? Colors.white : context.appColors.text;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
       decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(999),
-        border: selected ? null : Border.all(color: context.appColors.border),
+        color: selected ? AppConstants.primary : context.appColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(
+          color: selected ? AppConstants.primary : context.appColors.border,
+        ),
+        boxShadow: selected
+            ? [
+                BoxShadow(
+                  color: AppConstants.primary.withOpacity(0.18),
+                  blurRadius: 9,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
             Icon(icon, color: foregroundColor, size: 16),
-            const SizedBox(width: 5),
+            const SizedBox(width: 6),
           ],
           Text(
             text,
-            style: context.appText.bodyMedium?.copyWith(
+            style: context.appText.bodySmall?.copyWith(
               color: foregroundColor,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -1213,8 +1418,21 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _SimplePage(
       title: 'Settings',
+      subtitle: 'Application Preferences',
       icon: Icons.settings_outlined,
-      description: 'Manage app preferences and account settings.',
+      description: 'Manage your account preferences and application settings.',
+      details: [
+        _PageDetail(
+          icon: Icons.palette_outlined,
+          title: 'Appearance',
+          description: 'Customize display preferences',
+        ),
+        _PageDetail(
+          icon: Icons.notifications_outlined,
+          title: 'Notifications',
+          description: 'Control booking alerts',
+        ),
+      ],
     );
   }
 }
@@ -1226,8 +1444,22 @@ class AboutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _SimplePage(
       title: 'About App',
-      icon: Icons.info_outline,
-      description: 'Meeting room booking mobile application.',
+      subtitle: 'Application Information',
+      icon: Icons.meeting_room_outlined,
+      description:
+          'A modern meeting room booking application designed for efficient workspace management.',
+      details: [
+        _PageDetail(
+          icon: Icons.verified_outlined,
+          title: 'Reliable Booking',
+          description: 'Manage rooms with confidence',
+        ),
+        _PageDetail(
+          icon: Icons.devices_outlined,
+          title: 'Mobile Ready',
+          description: 'Accessible across devices',
+        ),
+      ],
     );
   }
 }
@@ -1239,8 +1471,22 @@ class HelpScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _SimplePage(
       title: 'Help & Support',
-      icon: Icons.help_outline,
-      description: 'Get help for booking, cancellation, and account issues.',
+      subtitle: 'Customer Support',
+      icon: Icons.support_agent_rounded,
+      description:
+          'Get support for booking, cancellation, room availability and account issues.',
+      details: [
+        _PageDetail(
+          icon: Icons.calendar_month_outlined,
+          title: 'Booking Help',
+          description: 'Create or modify reservations',
+        ),
+        _PageDetail(
+          icon: Icons.chat_bubble_outline_rounded,
+          title: 'Contact Support',
+          description: 'Request assistance',
+        ),
+      ],
     );
   }
 }
@@ -1252,21 +1498,39 @@ class PrivacyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _SimplePage(
       title: 'Privacy Policy',
+      subtitle: 'Security & Privacy',
       icon: Icons.privacy_tip_outlined,
-      description: 'Review privacy and data usage information.',
+      description:
+          'Review how booking information and account data are securely managed.',
+      details: [
+        _PageDetail(
+          icon: Icons.lock_outline_rounded,
+          title: 'Data Protection',
+          description: 'Secure account information',
+        ),
+        _PageDetail(
+          icon: Icons.visibility_outlined,
+          title: 'Transparency',
+          description: 'Understand data usage',
+        ),
+      ],
     );
   }
 }
 
 class _SimplePage extends StatelessWidget {
   final String title;
+  final String subtitle;
   final IconData icon;
   final String description;
+  final List<_PageDetail> details;
 
   const _SimplePage({
     required this.title,
+    required this.subtitle,
     required this.icon,
     required this.description,
+    required this.details,
   });
 
   @override
@@ -1274,46 +1538,191 @@ class _SimplePage extends StatelessWidget {
     return Scaffold(
       backgroundColor: context.appColors.background,
       appBar: AppBar(
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: context.appColors.background,
+        surfaceTintColor: Colors.transparent,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: IconButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            style: IconButton.styleFrom(
+              backgroundColor: context.appColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(13),
+                side: BorderSide(color: context.appColors.border),
+              ),
+            ),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: AppConstants.primary,
+              size: 18,
+            ),
+          ),
+        ),
         title: Text(
           title,
-          style: context.appText.titleLarge?.copyWith(
+          style: context.appText.titleMedium?.copyWith(
+            color: context.appColors.text,
+            fontSize: 18,
             fontWeight: FontWeight.w900,
           ),
         ),
       ),
-      body: Center(
-        child: Container(
-          margin: const EdgeInsets.all(AppConstants.pagePadding),
-          padding: const EdgeInsets.all(26),
-          decoration: BoxDecoration(
-            color: context.appColors.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: context.appColors.border),
-          ),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppConstants.pagePadding),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 4),
-              Icon(icon, color: AppConstants.primary, size: 54),
-              const SizedBox(height: 14),
-              Text(
-                title,
-                style: context.appText.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(22, 25, 22, 23),
+                decoration: BoxDecoration(
+                  color: context.appColors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: context.appColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: context.appColors.shadow,
+                      blurRadius: 17,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        color: context.appColors.primarySoft,
+                        borderRadius: BorderRadius.circular(21),
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(icon, color: AppConstants.primary, size: 34),
+                    ),
+                    const SizedBox(height: 17),
+                    Text(
+                      subtitle.toUpperCase(),
+                      textAlign: TextAlign.center,
+                      style: context.appText.bodySmall?.copyWith(
+                        color: AppConstants.primary,
+                        fontSize: 10,
+                        letterSpacing: 1.1,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: context.appText.headlineSmall?.copyWith(
+                        color: context.appColors.text,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    Text(
+                      description,
+                      textAlign: TextAlign.center,
+                      style: context.appText.bodyMedium?.copyWith(
+                        color: context.appColors.textMuted,
+                        fontSize: 13,
+                        height: 1.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                description,
-                textAlign: TextAlign.center,
-                style: context.appText.bodyMedium?.copyWith(
-                  color: context.appColors.textMuted,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(height: 16),
+              ...details.map(
+                (detail) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _DetailCard(detail: detail),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PageDetail {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _PageDetail({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+}
+
+class _DetailCard extends StatelessWidget {
+  final _PageDetail detail;
+
+  const _DetailCard({required this.detail});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+      decoration: BoxDecoration(
+        color: context.appColors.surface,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: context.appColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 43,
+            height: 43,
+            decoration: BoxDecoration(
+              color: context.appColors.primarySoft,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            alignment: Alignment.center,
+            child: Icon(detail.icon, size: 22, color: AppConstants.primary),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  detail.title,
+                  style: context.appText.bodyMedium?.copyWith(
+                    color: context.appColors.text,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  detail.description,
+                  style: context.appText.bodySmall?.copyWith(
+                    color: context.appColors.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 14,
+            color: context.appColors.textMuted,
+          ),
+        ],
       ),
     );
   }

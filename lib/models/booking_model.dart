@@ -25,7 +25,19 @@ bool _asBool(dynamic value) {
 DateTime? _asDate(dynamic value) {
   if (value == null) return null;
 
-  return DateTime.tryParse(value.toString());
+  final raw = value.toString().trim();
+  if (raw.isEmpty) return null;
+
+  // Date only
+  if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(raw)) {
+    return DateTime.tryParse(raw);
+  }
+
+  final normalized = raw.replaceFirst(' ', 'T');
+
+  // Do not add Z.
+  // Backend datetime is already Cambodia/local time.
+  return DateTime.tryParse(normalized);
 }
 
 String _asString(dynamic value, {String fallback = ''}) {

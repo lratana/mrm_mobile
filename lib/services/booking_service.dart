@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 import '../models/booking_model.dart';
@@ -6,10 +7,26 @@ import 'api_service.dart';
 
 class BookingService {
   final ApiService _api = ApiService.instance;
+
+  /// Current backend request format:
+  /// yyyy-MM-dd HH:mm:ss
+  ///
+  /// Important:
+  /// This sends local wall-clock time because the current backend appears
+  /// to convert Cambodia/local submitted times into UTC before returning them.
   final DateFormat _apiFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
 
   String apiDate(DateTime date) {
-    return _apiFormat.format(date);
+    final utcDate = date.toUtc();
+    final formatted = _apiFormat.format(utcDate);
+
+    debugPrint('========== BOOKING REQUEST DATETIME ==========');
+    debugPrint('Input DateTime: $date');
+    debugPrint('Input isUtc: ${date.isUtc}');
+    debugPrint('UTC DateTime: $utcDate');
+    debugPrint('Request UTC Value: $formatted');
+
+    return formatted;
   }
 
   List<Booking> _parseBookings(dynamic response) {
@@ -98,15 +115,40 @@ class BookingService {
   }
 
   Future<Booking> createBooking(Map<String, dynamic> payload) async {
+    debugPrint('========== CREATE BOOKING PAYLOAD ==========');
+    debugPrint('start_datetime: ${payload['start_datetime']}');
+    debugPrint('end_datetime: ${payload['end_datetime']}');
+
     final response = await _api.post('api/bookings/create', body: payload);
 
-    return Booking.fromJson(_parseObject(response));
+    final booking = Booking.fromJson(_parseObject(response));
+
+    debugPrint('========== CREATE BOOKING RESPONSE ==========');
+    debugPrint('Parsed start: ${booking.startDatetime}');
+    debugPrint('Parsed end: ${booking.endDatetime}');
+    debugPrint('Local start: ${booking.startDatetime?.toLocal()}');
+    debugPrint('Local end: ${booking.endDatetime?.toLocal()}');
+
+    return booking;
   }
 
   Future<Booking> updateBooking(int id, Map<String, dynamic> payload) async {
+    debugPrint('========== UPDATE BOOKING PAYLOAD ==========');
+    debugPrint('Booking ID: $id');
+    debugPrint('start_datetime: ${payload['start_datetime']}');
+    debugPrint('end_datetime: ${payload['end_datetime']}');
+
     final response = await _api.put('api/bookings/update/$id', body: payload);
 
-    return Booking.fromJson(_parseObject(response));
+    final booking = Booking.fromJson(_parseObject(response));
+
+    debugPrint('========== UPDATE BOOKING RESPONSE ==========');
+    debugPrint('Parsed start: ${booking.startDatetime}');
+    debugPrint('Parsed end: ${booking.endDatetime}');
+    debugPrint('Local start: ${booking.startDatetime?.toLocal()}');
+    debugPrint('Local end: ${booking.endDatetime?.toLocal()}');
+
+    return booking;
   }
 
   Future<Map<String, dynamic>> availability({
@@ -115,12 +157,15 @@ class BookingService {
     required DateTime end,
     int? ignoreId,
   }) async {
+    final startValue = apiDate(start);
+    final endValue = apiDate(end);
+
     final response = await _api.get(
       'api/bookings/availability',
       query: {
         'room_id': roomId,
-        'start_datetime': apiDate(start),
-        'end_datetime': apiDate(end),
+        'start_datetime': startValue,
+        'end_datetime': endValue,
         'ignore_id': ignoreId,
       },
     );
@@ -141,11 +186,14 @@ class BookingService {
     required DateTime end,
     int? ignoreId,
   }) async {
+    final startValue = apiDate(start);
+    final endValue = apiDate(end);
+
     final response = await _api.get(
       'api/bookings/available-rooms',
       query: {
-        'start_datetime': apiDate(start),
-        'end_datetime': apiDate(end),
+        'start_datetime': startValue,
+        'end_datetime': endValue,
         'ignore_id': ignoreId,
       },
     );
@@ -199,6 +247,27 @@ class BookingService {
     final response = await _api.put('api/bookings/admin-cancel/$id');
 
     return Booking.fromJson(_parseObject(response));
+  }
+
+  Future<Booking> addExtraTime({
+    required int id,
+    required int extraHours,
+  }) async {
+    debugPrint('========== EXTEND BOOKING ==========');
+    debugPrint('Booking ID: $id');
+    debugPrint('Extra hours: $extraHours');
+
+    final response = await _api.put(
+      'api/bookings/extend-time/$id',
+      body: {'extra_hours': extraHours},
+    );
+
+    final booking = Booking.fromJson(_parseObject(response));
+
+    debugPrint('Updated raw end: ${booking.endDatetime}');
+    debugPrint('Updated local end: ${booking.endDatetime?.toLocal()}');
+
+    return booking;
   }
 
   Future<void> deleteBooking(int id) async {

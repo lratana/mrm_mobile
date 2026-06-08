@@ -6,6 +6,7 @@ class AppConstants {
   // Android emulator local Laravel: http://10.0.2.2:8000/api
   // iOS simulator local Laravel: http://127.0.0.1:8000/api
   static const String baseUrl = 'https://starlink98.cloud';
+  // static const String baseUrl = 'http://10.0.2.2:8000';
 
   // Used to convert Laravel public disk image paths such as rooms/images/a.jpg
   // into http://.../storage/rooms/images/a.jpg

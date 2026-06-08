@@ -14,7 +14,7 @@ class BookingCard extends StatelessWidget {
   final VoidCallback? onReject;
   final VoidCallback? onShare;
   final bool isAdmin;
-
+  final VoidCallback? onExtend;
   const BookingCard({
     super.key,
     required this.booking,
@@ -24,6 +24,7 @@ class BookingCard extends StatelessWidget {
     this.onReject,
     this.onShare,
     this.isAdmin = false,
+    this.onExtend,
   });
 
   Color _statusColor(BuildContext context) {
@@ -68,6 +69,7 @@ class BookingCard extends StatelessWidget {
 
   bool get _hasActions {
     return onShare != null ||
+        onExtend != null ||
         onUpdate != null ||
         onDelete != null ||
         onApprove != null ||
@@ -98,8 +100,8 @@ class BookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final start = booking.startDatetime?.toLocal();
-    final end = booking.endDatetime?.toLocal();
+    final start = booking.startDatetime;
+    final end = booking.endDatetime;
 
     final dateFormat = DateFormat('EEE, MMM d');
     final timeFormat = DateFormat('hh:mm a');
@@ -180,6 +182,15 @@ class BookingCard extends StatelessWidget {
                     runSpacing: 8,
                     alignment: WrapAlignment.end,
                     children: [
+                      if (onExtend != null)
+                        _ModernActionButton(
+                          label: 'Extra Time',
+                          icon: Icons.more_time_rounded,
+                          color: AppConstants.primary,
+                          compact: compact,
+                          fullWidth: veryCompact,
+                          onTap: onExtend!,
+                        ),
                       if (onShare != null)
                         BookingExportMenu(bookings: [booking]),
 
@@ -233,6 +244,66 @@ class BookingCard extends StatelessWidget {
     );
   }
 }
+
+// class _ExtraTimeOption extends StatelessWidget {
+//   final int hours;
+//   final DateTime? currentEnd;
+
+//   const _ExtraTimeOption({required this.hours, required this.currentEnd});
+
+//   String _formatTime(BuildContext context, DateTime dateTime) {
+//     return MaterialLocalizations.of(context).formatTimeOfDay(
+//       TimeOfDay.fromDateTime(dateTime.toLocal()),
+//       alwaysUse24HourFormat: false,
+//     );
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final newEnd = currentEnd?.add(Duration(hours: hours));
+
+//     return Material(
+//       color: context.appColors.primarySoft,
+//       borderRadius: BorderRadius.circular(15),
+//       child: InkWell(
+//         borderRadius: BorderRadius.circular(15),
+//         onTap: () {
+//           Navigator.pop(context, hours);
+//         },
+//         child: Container(
+//           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 13),
+//           decoration: BoxDecoration(
+//             borderRadius: BorderRadius.circular(15),
+//             border: Border.all(color: AppConstants.primary.withOpacity(0.14)),
+//           ),
+//           child: Column(
+//             children: [
+//               Text(
+//                 '+$hours hr',
+//                 style: context.appText.titleMedium?.copyWith(
+//                   color: AppConstants.primary,
+//                   fontSize: 15,
+//                   fontWeight: FontWeight.w900,
+//                 ),
+//               ),
+//               const SizedBox(height: 5),
+//               Text(
+//                 newEnd == null ? '' : _formatTime(context, newEnd),
+//                 maxLines: 1,
+//                 overflow: TextOverflow.ellipsis,
+//                 style: context.appText.bodySmall?.copyWith(
+//                   color: context.appColors.textMuted,
+//                   fontSize: 10,
+//                   fontWeight: FontWeight.w700,
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 class _BookingHeader extends StatelessWidget {
   final Booking booking;
