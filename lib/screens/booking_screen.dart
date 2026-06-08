@@ -344,40 +344,15 @@ class _BookingScreenState extends State<BookingScreen> {
     final end = booking.endDatetime;
     final now = DateTime.now().toLocal();
 
-    debugPrint('========== EXTRA TIME CHECK ==========');
-    debugPrint('Booking ID: ${booking.bookingId}');
-    debugPrint('Allowed role: $allowedRole');
-    debugPrint('Status: "$status"');
-    debugPrint('Start: $start');
-    debugPrint('End: $end');
-    debugPrint('Now: $now');
+    if (!allowedRole) return false;
 
-    if (!allowedRole) {
-      debugPrint('BLOCKED: current account is not user or admin');
-      return false;
-    }
+    // allow approved or in-progress bookings
+    if (!(status == 'approved')) return false;
 
-    if (status != 'approved') {
-      debugPrint('BLOCKED: booking status is not approved');
-      return false;
-    }
+    if (start == null || end == null) return false;
+    if (now.isBefore(start)) return false;
+    if (!now.isBefore(end)) return false;
 
-    if (start == null || end == null) {
-      debugPrint('BLOCKED: startDatetime or endDatetime is null');
-      return false;
-    }
-
-    if (now.isBefore(start)) {
-      debugPrint('BLOCKED: meeting has not started yet');
-      return false;
-    }
-
-    if (!now.isBefore(end)) {
-      debugPrint('BLOCKED: meeting has already ended');
-      return false;
-    }
-
-    debugPrint('ALLOWED: Extra Time button should appear');
     return true;
   }
 
@@ -627,6 +602,10 @@ class _BookingScreenState extends State<BookingScreen> {
       id: booking.bookingId,
       extraHours: selectedHours,
     );
+
+    if (ok && context.mounted) {
+      await controller.fetchBookings();
+    }
 
     if (!context.mounted) {
       return;
