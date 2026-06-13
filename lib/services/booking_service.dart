@@ -249,6 +249,34 @@ class BookingService {
     return Booking.fromJson(_parseObject(response));
   }
 
+  Future<Booking> startMeeting(int id) async {
+    debugPrint('========== START MEETING ==========');
+    debugPrint('Booking ID: $id');
+
+    final response = await _api.post(
+      'api/bookings/start/$id', // backend route for starting meeting
+    );
+
+    final booking = Booking.fromJson(_parseObject(response));
+
+    debugPrint('Meeting started: ${booking.actualStartDatetime}');
+    return booking;
+  }
+
+  Future<Booking> leaveMeeting(int id) async {
+    debugPrint('========== LEAVE MEETING ==========');
+    debugPrint('Booking ID: $id');
+
+    final response = await _api.post(
+      'api/bookings/leave/$id', // backend route for leaving meeting
+    );
+
+    final booking = Booking.fromJson(_parseObject(response));
+
+    debugPrint('Meeting ended: ${booking.actualEndDatetime}');
+    return booking;
+  }
+
   Future<Booking> addExtraTime({
     required int id,
     required int extraHours,

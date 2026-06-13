@@ -28,15 +28,17 @@ class _ExtraTimeSheet extends StatelessWidget {
 
   String _formatTime(BuildContext context, DateTime dateTime) {
     return MaterialLocalizations.of(context).formatTimeOfDay(
-      TimeOfDay.fromDateTime(dateTime.toLocal()),
+      TimeOfDay.fromDateTime(dateTime),
       alwaysUse24HourFormat: false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentEnd = booking.endDatetime?.toLocal();
-
+    final currentEnd = booking.endDatetime;
+    final newEnd = currentEnd != null
+        ? (currentEnd).add(Duration(hours: 1))
+        : null;
     return SafeArea(
       child: Container(
         margin: const EdgeInsets.all(12),
@@ -131,7 +133,7 @@ class _ExtraTimeSheet extends StatelessWidget {
                     child: Text(
                       currentEnd == null
                           ? 'Current ending time unavailable'
-                          : 'Currently ends at ${_formatTime(context, currentEnd)}',
+                          : 'Currently ends at ${_formatTime(context, newEnd?.toLocal() ?? currentEnd.toLocal())}',
                       style: context.appText.bodyMedium?.copyWith(
                         color: context.appColors.text,
                         fontSize: 13,
@@ -225,7 +227,7 @@ class _ExtraTimeOption extends StatelessWidget {
 
   String _formatTime(BuildContext context, DateTime dateTime) {
     return MaterialLocalizations.of(context).formatTimeOfDay(
-      TimeOfDay.fromDateTime(dateTime.toLocal()),
+      TimeOfDay.fromDateTime(dateTime),
       alwaysUse24HourFormat: false,
     );
   }
@@ -338,20 +340,19 @@ class _BookingScreenState extends State<BookingScreen> {
     return false;
   }
 
-  bool _canAddExtraTime(Booking booking, bool allowedRole) {
+  bool _canAddExtraTime(Booking? booking, bool allowedRole) {
+    if (booking == null) return false;
+
     final status = booking.status.toLowerCase().trim();
-    final start = booking.startDatetime;
+    final start = booking.actualStartDatetime ?? booking.startDatetime;
     final end = booking.endDatetime;
-    final now = DateTime.now().toLocal();
+    final now = DateTime.now();
 
     if (!allowedRole) return false;
-
-    // allow approved or in-progress bookings
-    if (!(status == 'approved')) return false;
-
+    if (!(status == 'approved' || status == 'in_progress')) return false;
     if (start == null || end == null) return false;
-    if (now.isBefore(start)) return false;
-    if (!now.isBefore(end)) return false;
+
+    if (now.isAfter(start) && now.isBefore(end)) return false;
 
     return true;
   }
@@ -648,6 +649,50 @@ class _BookingScreenState extends State<BookingScreen> {
       );
   }
 
+  // Start Meeting API
+  Future<void> _startMeeting(BuildContext context, Booking booking) async {
+    final controller = context.read<BookingController>();
+    final success = await controller.startMeeting(booking.bookingId);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Meeting started'
+              : controller.error ?? 'Failed to start meeting',
+        ),
+      ),
+    );
+
+    if (success) {
+      await controller.fetchBookings();
+    }
+  }
+
+  // Leave Meeting API
+  Future<void> _leaveMeeting(BuildContext context, Booking booking) async {
+    final controller = context.read<BookingController>();
+    final success = await controller.leaveMeeting(booking.bookingId);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Meeting ended'
+              : controller.error ?? 'Failed to leave meeting',
+        ),
+      ),
+    );
+
+    if (success) {
+      await controller.fetchBookings();
+    }
+  }
+
   Future<void> _deleteBooking(BuildContext context, int bookingId) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -846,6 +891,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
                 return BookingCard(
                   booking: booking,
+
                   onExtend: canExtend
                       ? () {
                           debugPrint(

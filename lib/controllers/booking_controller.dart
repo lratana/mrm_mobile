@@ -31,9 +31,9 @@ class BookingController extends ChangeNotifier {
     } catch (e) {
       error = _cleanError(e);
 
-      if (bookings.isEmpty) {
-        bookings = _demoBookings();
-      }
+      // if (bookings.isEmpty) {
+      //   bookings = _demoBookings();
+      // }
     } finally {
       loading = false;
       notifyListeners();
@@ -193,6 +193,56 @@ class BookingController extends ChangeNotifier {
     }
   }
 
+  Future<bool> startMeeting(int bookingId) async {
+    submitting = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final updated = await _service.startMeeting(bookingId);
+
+      final index = bookings.indexWhere(
+        (booking) => booking.bookingId == bookingId,
+      );
+      if (index >= 0) {
+        bookings[index] = updated;
+      }
+
+      return true;
+    } catch (e) {
+      error = _cleanError(e);
+      return false;
+    } finally {
+      submitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> leaveMeeting(int bookingId) async {
+    submitting = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final updated = await _service.leaveMeeting(bookingId);
+
+      final index = bookings.indexWhere(
+        (booking) => booking.bookingId == bookingId,
+      );
+      if (index >= 0) {
+        bookings[index] = updated;
+      }
+
+      return true;
+    } catch (e) {
+      error = _cleanError(e);
+      return false;
+    } finally {
+      submitting = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> deleteBooking(int id) async {
     submitting = true;
     error = null;
@@ -274,28 +324,28 @@ class BookingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<Booking> _demoBookings() {
-    final now = DateTime.now();
+  // List<Booking> _demoBookings() {
+  //   final now = DateTime.now();
 
-    return [
-      Booking(
-        id: 'demo-1',
-        bookingId: 1,
-        roomId: 1,
-        userId: 1,
-        meetingTitle: 'Quarterly Strategy Sync',
-        meetingChairman: 'Chairman',
-        startDatetime: now.add(const Duration(days: 1, hours: 2)),
-        endDatetime: now.add(const Duration(days: 1, hours: 4)),
-        status: 'approved',
-        room: const Room(
-          id: 1,
-          name: 'The Executive Suite',
-          location: 'Financial District, NY',
-          capacity: 12,
-          description: '',
-        ),
-      ),
-    ];
-  }
+  //   return [
+  //     Booking(
+  //       id: 'demo-1',
+  //       bookingId: 1,
+  //       roomId: 1,
+  //       userId: 1,
+  //       meetingTitle: 'Quarterly Strategy Sync',
+  //       meetingChairman: 'Chairman',
+  //       startDatetime: now.add(const Duration(days: 1, hours: 2)),
+  //       endDatetime: now.add(const Duration(days: 1, hours: 4)),
+  //       status: 'approved',
+  //       room: const Room(
+  //         id: 1,
+  //         name: 'The Executive Suite',
+  //         location: 'Financial District, NY',
+  //         capacity: 12,
+  //         description: '',
+  //       ),
+  //     ),
+  //   ];
+  // }
 }

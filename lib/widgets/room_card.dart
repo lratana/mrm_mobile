@@ -787,6 +787,7 @@ class FeaturedRoomListCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Room name and capacity
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -821,6 +822,7 @@ class FeaturedRoomListCard extends StatelessWidget {
 
                 const SizedBox(height: 7),
 
+                // Location
                 Row(
                   children: [
                     Icon(
@@ -845,6 +847,7 @@ class FeaturedRoomListCard extends StatelessWidget {
                   ],
                 ),
 
+                // Features
                 if (room.featureNames.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Wrap(
@@ -857,8 +860,35 @@ class FeaturedRoomListCard extends StatelessWidget {
                   ),
                 ],
 
+                // ✅ Equipment section
+                if (room.equipment.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Equipment:',
+                    style: context.appText.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: context.appColors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: room.equipment
+                        .map(
+                          (equipment) => Chip(
+                            label: Text(equipment.name),
+                            backgroundColor: Colors.blue.shade50,
+                            labelStyle: TextStyle(color: Colors.blue.shade800),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+
                 const SizedBox(height: 14),
 
+                // Book button
                 SizedBox(
                   width: double.infinity,
                   height: 48,

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/widgets/booking_export_menu.dart';
 import 'package:intl/intl.dart';
@@ -15,6 +17,7 @@ class BookingCard extends StatelessWidget {
   final VoidCallback? onShare;
   final bool isAdmin;
   final VoidCallback? onExtend;
+
   const BookingCard({
     super.key,
     required this.booking,
@@ -112,7 +115,14 @@ class BookingCard extends StatelessWidget {
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 360;
         final veryCompact = constraints.maxWidth < 315;
-
+        debugPrint(
+          start == null
+              ? 'No schedule'
+              : '${dateFormat.format(start.toLocal())} • '
+                    '${dateFormat.format(end!.toLocal())} '
+                    '${timeFormat.format(start.toLocal())}'
+                    '${end == null ? '' : ' - ${timeFormat.format(end.toLocal())}'}',
+        );
         return Container(
           width: double.infinity,
           margin: const EdgeInsets.only(bottom: 14),
@@ -144,13 +154,7 @@ class BookingCard extends StatelessWidget {
 
               const SizedBox(height: 14),
 
-              _SchedulePanel(
-                text: start == null
-                    ? 'No schedule'
-                    : '${dateFormat.format(start)} • '
-                          '${timeFormat.format(start)}'
-                          '${end == null ? '' : ' - ${timeFormat.format(end)}'}',
-              ),
+              SchedulePanel(start: start, end: end),
 
               if (booking.meetingChairman.trim().isNotEmpty) ...[
                 const SizedBox(height: 11),
@@ -182,6 +186,8 @@ class BookingCard extends StatelessWidget {
                     runSpacing: 8,
                     alignment: WrapAlignment.end,
                     children: [
+                      if (onShare != null)
+                        BookingExportMenu(bookings: [booking]),
                       if (onExtend != null)
                         _ModernActionButton(
                           label: 'Extra Time',
@@ -191,8 +197,6 @@ class BookingCard extends StatelessWidget {
                           fullWidth: veryCompact,
                           onTap: onExtend!,
                         ),
-                      if (onShare != null)
-                        BookingExportMenu(bookings: [booking]),
 
                       if (onUpdate != null)
                         _ModernActionButton(
@@ -413,16 +417,20 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _SchedulePanel extends StatelessWidget {
-  final String text;
+class SchedulePanel extends StatelessWidget {
+  final DateTime? start;
+  final DateTime? end;
 
-  const _SchedulePanel({required this.text});
+  const SchedulePanel({this.start, this.end, super.key});
 
   @override
   Widget build(BuildContext context) {
+    final dateFormat = DateFormat('EEE, MMM d');
+    final timeFormat = DateFormat('hh:mm a');
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: context.appColors.surfaceSoft,
         borderRadius: BorderRadius.circular(16),
@@ -430,21 +438,53 @@ class _SchedulePanel extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.schedule_rounded,
-            size: 19,
-            color: context.appColors.textMuted,
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppConstants.chipBg, // soft background
+              shape: BoxShape.circle, // circle icon background
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.date_range, // slightly bolder icon
+              color: AppConstants.primary, // accent color for better visibility
+              size: 20,
+            ),
           ),
-          const SizedBox(width: 9),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              text,
-              softWrap: true,
-              style: context.appText.bodySmall?.copyWith(
-                color: context.appColors.text,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Start
+                Text(
+                  start == null
+                      ? 'No schedule'
+                      : 'Start: ${dateFormat.format(start!.toLocal())} • ${timeFormat.format(start!.toLocal())}',
+                  style: context.appText.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: AppConstants.radiusSmall,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // End
+                Text(
+                  end == null
+                      ? ''
+                      : 'End: ${dateFormat.format(end!.toLocal())} • ${timeFormat.format(end!.toLocal())}',
+                  style: context.appText.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w400,
+                    fontSize: AppConstants.radiusSmall,
+                    color: context.appColors.textMuted,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

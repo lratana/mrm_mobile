@@ -5,7 +5,20 @@ class RoomService {
   final ApiService _api = ApiService.instance;
 
   List<Room> _parseRooms(dynamic response) {
-    final dynamic list = response is Map ? response['data'] : response;
+    if (response == null) return [];
+
+    final dynamic list;
+
+    if (response is Map && response['data'] != null) {
+      // Check if paginated
+      if (response['data'] is Map && response['data']['items'] != null) {
+        list = response['data']['items'];
+      } else {
+        list = response['data'];
+      }
+    } else {
+      list = response;
+    }
 
     if (list is List) {
       return list

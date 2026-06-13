@@ -2,59 +2,36 @@ import 'room_model.dart';
 
 int _asInt(dynamic value, {int fallback = 0}) {
   if (value is int) return value;
-
-  if (value is num) {
-    return value.toInt();
-  }
-
+  if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? fallback;
 }
 
 bool _asBool(dynamic value) {
   if (value is bool) return value;
-
-  if (value is num) {
-    return value != 0;
-  }
-
+  if (value is num) return value != 0;
   final v = value?.toString().toLowerCase();
-
   return v == 'true' || v == '1' || v == 'yes';
 }
 
 DateTime? _asDate(dynamic value) {
   if (value == null) return null;
-
   final raw = value.toString().trim();
   if (raw.isEmpty) return null;
-
-  // Date only
   if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(raw)) {
     return DateTime.tryParse(raw);
   }
-
   final normalized = raw.replaceFirst(' ', 'T');
-
-  // Do not add Z.
-  // Backend datetime is already Cambodia/local time.
   return DateTime.tryParse(normalized);
 }
 
 String _asString(dynamic value, {String fallback = ''}) {
   if (value == null) return fallback;
-
   return value.toString();
 }
 
 List<String> _asStringList(dynamic value) {
-  if (value == null) {
-    return [];
-  }
-
-  if (value is List) {
-    return value.map((e) => e.toString()).toList();
-  }
-
+  if (value == null) return [];
+  if (value is List) return value.map((e) => e.toString()).toList();
   if (value is String && value.trim().isNotEmpty) {
     return value
         .split(',')
@@ -62,7 +39,6 @@ List<String> _asStringList(dynamic value) {
         .where((e) => e.isNotEmpty)
         .toList();
   }
-
   return [];
 }
 
@@ -87,16 +63,17 @@ class BookingUser {
 }
 
 class Booking {
-  /// Calendar API can return generated IDs like:
-  /// "3_20241009090000"
   final String id;
-
   final int bookingId;
   final int roomId;
   final int userId;
 
   final DateTime? startDatetime;
   final DateTime? endDatetime;
+
+  // ✅ New fields for actual start/end
+  final DateTime? actualStartDatetime;
+  final DateTime? actualEndDatetime;
 
   final String recurrenceType;
   final List<String> recurrenceDays;
@@ -130,6 +107,8 @@ class Booking {
     required this.userId,
     this.startDatetime,
     this.endDatetime,
+    this.actualStartDatetime,
+    this.actualEndDatetime,
     this.recurrenceType = 'none',
     this.recurrenceDays = const [],
     this.recurrencePeriod,
@@ -155,53 +134,34 @@ class Booking {
 
     return Booking(
       id: rawId.toString(),
-
       bookingId: _asInt(json['booking_id'] ?? json['id']),
-
       roomId: _asInt(json['room_id']),
-
       userId: _asInt(json['user_id']),
-
       startDatetime: _asDate(json['start_datetime']),
-
       endDatetime: _asDate(json['end_datetime']),
-
+      actualStartDatetime: _asDate(json['actual_start_datetime']),
+      actualEndDatetime: _asDate(json['actual_end_datetime']),
       recurrenceType: _asString(json['recurrence_type'], fallback: 'none'),
-
       recurrenceDays: _asStringList(json['recurrence_days']),
-
       recurrencePeriod: json['recurrence_period'] == null
           ? null
           : _asInt(json['recurrence_period']),
-
       recurrenceUntil: _asDate(json['recurrence_until']),
-
       meetingTitle: _asString(json['meeting_title']),
-
       meetingChairman: _asString(json['meeting_chairman']),
-
       snackRequired: _asBool(json['snack_required']),
-
       snackNote: _asString(json['snack_note']),
-
       technicianRequired: _asBool(json['technician_required']),
-
       technicianNote: _asString(json['technician_note']),
-
       status: _asString(json['status'], fallback: 'pending'),
-
       cancelReason: _asString(json['cancel_reason']),
-
       rejectReason: _asString(json['reject_reason']),
-
       room: json['room'] is Map
           ? Room.fromJson(Map<String, dynamic>.from(json['room'] as Map))
           : null,
-
       user: json['user'] is Map
           ? BookingUser.fromJson(Map<String, dynamic>.from(json['user'] as Map))
           : null,
-
       isGenerated: _asBool(json['is_generated']),
       createdAt: _asDate(json['created_at']),
       updatedAt: _asDate(json['updated_at']),
@@ -209,30 +169,21 @@ class Booking {
   }
 
   String get title {
-    if (meetingTitle.trim().isNotEmpty) {
-      return meetingTitle;
-    }
-
+    if (meetingTitle.trim().isNotEmpty) return meetingTitle;
     return room?.name ?? 'Room Booking';
   }
 
-  bool get canEdit {
-    return status == 'pending' || status == 'approved';
-  }
-
-  bool get isPending {
-    return status == 'pending';
-  }
-
-  bool get isApproved {
-    return status == 'approved';
-  }
+  bool get canEdit => status == 'pending' || status == 'approved';
+  bool get isPending => status == 'pending';
+  bool get isApproved => status == 'approved';
 
   Map<String, dynamic> toPayload() {
     return {
       'room_id': roomId,
       'start_datetime': startDatetime?.toIso8601String(),
       'end_datetime': endDatetime?.toIso8601String(),
+      'actual_start_datetime': actualStartDatetime?.toIso8601String(),
+      'actual_end_datetime': actualEndDatetime?.toIso8601String(),
       'recurrence_type': recurrenceType,
       'recurrence_days': recurrenceDays,
       'recurrence_period': recurrencePeriod,
@@ -243,6 +194,9 @@ class Booking {
       'snack_note': snackNote,
       'technician_required': technicianRequired,
       'technician_note': technicianNote,
+      'status': status,
+      'cancel_reason': cancelReason,
+      'reject_reason': rejectReason,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };

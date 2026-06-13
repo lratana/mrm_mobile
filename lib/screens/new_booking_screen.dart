@@ -60,6 +60,7 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
   bool showCustomMeetingTitle = false;
 
   final List<TimeOfDay> times = const [
+    TimeOfDay(hour: 8, minute: 0),
     TimeOfDay(hour: 9, minute: 0),
     TimeOfDay(hour: 10, minute: 0),
     TimeOfDay(hour: 11, minute: 0),
@@ -68,6 +69,8 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     TimeOfDay(hour: 14, minute: 0),
     TimeOfDay(hour: 15, minute: 0),
     TimeOfDay(hour: 16, minute: 0),
+    TimeOfDay(hour: 17, minute: 0),
+    TimeOfDay(hour: 18, minute: 0),
   ];
 
   final List<_BookingTimePreset> timePresets = const [
@@ -109,8 +112,8 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
 
     if (booking == null) return;
 
-    final start = booking.startDatetime;
-    final end = booking.endDatetime;
+    final start = booking.startDatetime?.toLocal();
+    final end = booking.endDatetime?.toLocal();
 
     if (start != null) {
       selectedDate = DateTime(start.year, start.month, start.day);
@@ -118,8 +121,12 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     }
 
     if (start != null && end != null) {
-      final hours = end.difference(start).inHours;
-      durationHours = hours <= 0 ? 1 : hours;
+      final duration = end.difference(start);
+      durationHours = duration.inMinutes ~/ 60; // integer division
+      if (duration.inMinutes % 60 != 0) {
+        // handle remaining minutes if you want to round up
+        durationHours += 1;
+      }
     }
 
     meetingTitle.text = booking.meetingTitle;
@@ -183,8 +190,7 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
       selectedDate.day,
       time.hour,
       time.minute,
-    );
-
+    ).toLocal(); // ensure local time
     return DateFormat('hh:mm a').format(date);
   }
 
@@ -404,9 +410,9 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
 
           const SizedBox(height: 14),
 
-          _SelectedTimePanel(
+          SelectedTimePanel(
             text:
-                'Selected: ${_timeText(selectedTime)} - ${DateFormat('hh:mm a').format(_endDateTime)}',
+                'Selected: ${_timeText(selectedTime)} - ${DateFormat('hh:mm a').format(_endDateTime.toLocal())}',
           ),
 
           const SizedBox(height: 24),
@@ -846,26 +852,51 @@ class _StartTimeChip extends StatelessWidget {
   }
 }
 
-class _SelectedTimePanel extends StatelessWidget {
+class SelectedTimePanel extends StatelessWidget {
   final String text;
 
-  const _SelectedTimePanel({required this.text});
+  const SelectedTimePanel({required this.text, super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: _boxDecoration(context),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor, // soft card background
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.grey.shade300, // subtle border
+          width: 1,
+        ),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.schedule_rounded, color: AppConstants.primary),
-          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppConstants.mint,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.schedule_rounded,
+              color: AppConstants.primaryDark,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: context.appText.bodyMedium?.copyWith(
-                color: context.appColors.text,
-                fontWeight: FontWeight.w800,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
               ),
             ),
           ),
