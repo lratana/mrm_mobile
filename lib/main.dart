@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/splash_screen.dart';
 import 'package:flutter_application_1/utils/app_theme.dart';
 import 'package:provider/provider.dart';
 
@@ -58,7 +59,7 @@ class RoomBookingApp extends StatelessWidget {
                 child: child ?? const SizedBox.shrink(),
               );
             },
-            home: const AuthGate(),
+            home: const SplashScreen(),
           );
         },
       ),

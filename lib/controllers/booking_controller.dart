@@ -294,6 +294,8 @@ class BookingController extends ChangeNotifier {
     required DateTime start,
     required DateTime end,
     int? ignoreId,
+    int? participants,
+    List<String>? equipment,
   }) async {
     loading = true;
     error = null;
@@ -304,10 +306,13 @@ class BookingController extends ChangeNotifier {
         start: start,
         end: end,
         ignoreId: ignoreId,
+        participants: participants,
+        equipment: equipment,
       );
     } catch (e) {
       error = _cleanError(e);
       availableRooms = [];
+      debugPrint('FETCH AVAILABLE ROOMS ERROR: $e');
     } finally {
       loading = false;
       notifyListeners();

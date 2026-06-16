@@ -223,6 +223,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       title: _headerTitle(controller),
                       viewMode: viewMode,
                       loading: controller.loading,
+                      onBack: () => Navigator.maybePop(context),
                       onToday: () => _goToday(context),
                       onPrevious: () => _changePeriod(context, controller, -1),
                       onNext: () => _changePeriod(context, controller, 1),
@@ -327,15 +328,16 @@ class _IOSHeader extends StatelessWidget {
   final String title;
   final int viewMode;
   final bool loading;
+  final VoidCallback? onBack;
   final VoidCallback onToday;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final ValueChanged<int> onViewChanged;
-
   const _IOSHeader({
     required this.title,
     required this.viewMode,
     required this.loading,
+    this.onBack,
     required this.onToday,
     required this.onPrevious,
     required this.onNext,
@@ -352,6 +354,20 @@ class _IOSHeader extends StatelessWidget {
         children: [
           Row(
             children: [
+              if (onBack != null) ...[
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minSize: 32,
+                  onPressed: onBack,
+                  child: const Icon(
+                    CupertinoIcons.chevron_left,
+                    color: _CalendarScreenState.appleRed,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
+
               CupertinoButton(
                 padding: EdgeInsets.zero,
                 minSize: 32,
@@ -365,7 +381,9 @@ class _IOSHeader extends StatelessWidget {
                   ),
                 ),
               ),
+
               const Spacer(),
+
               IconButton(
                 tooltip: 'Previous',
                 visualDensity: VisualDensity.compact,
@@ -375,6 +393,7 @@ class _IOSHeader extends StatelessWidget {
                   color: _CalendarScreenState.appleRed,
                 ),
               ),
+
               IconButton(
                 tooltip: 'Next',
                 visualDensity: VisualDensity.compact,

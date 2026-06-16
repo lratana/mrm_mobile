@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_application_1/screens/new_booking_screen.dart';
+import 'package:flutter_application_1/screens/room_screen.dart';
 import 'package:flutter_application_1/services/booking_export_service.dart';
 import 'package:flutter_application_1/utils/app_palette.dart';
 import 'package:flutter_application_1/utils/app_shimmer.dart';
+import 'package:flutter_application_1/utils/date_time_helper.dart';
 import 'package:flutter_application_1/widgets/booking_export_menu.dart';
 import 'package:provider/provider.dart';
 
@@ -36,9 +39,16 @@ class _ExtraTimeSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentEnd = booking.endDatetime;
-    final newEnd = currentEnd != null
-        ? (currentEnd).add(Duration(hours: 1))
+
+    final localCurrentEnd = currentEnd != null
+        ? DateTimeHelper.toLocal(currentEnd)
         : null;
+
+    final newEnd = currentEnd != null
+        ? currentEnd.add(const Duration(hours: 1))
+        : null;
+
+    final localNewEnd = newEnd != null ? DateTimeHelper.toLocal(newEnd) : null;
     return SafeArea(
       child: Container(
         margin: const EdgeInsets.all(12),
@@ -133,7 +143,7 @@ class _ExtraTimeSheet extends StatelessWidget {
                     child: Text(
                       currentEnd == null
                           ? 'Current ending time unavailable'
-                          : 'Currently ends at ${_formatTime(context, newEnd?.toLocal() ?? currentEnd.toLocal())}',
+                          : 'Currently ends at ${_formatTime(context, localNewEnd ?? localCurrentEnd!)}',
                       style: context.appText.bodyMedium?.copyWith(
                         color: context.appColors.text,
                         fontSize: 13,
@@ -236,6 +246,8 @@ class _ExtraTimeOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final newEnd = currentEnd?.add(Duration(hours: hours));
 
+    final localNewEnd = newEnd != null ? DateTimeHelper.toLocal(newEnd) : null;
+
     return Material(
       color: context.appColors.primarySoft,
       borderRadius: BorderRadius.circular(15),
@@ -262,7 +274,7 @@ class _ExtraTimeOption extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                newEnd == null ? '' : _formatTime(context, newEnd),
+                newEnd == null ? '' : _formatTime(context, localNewEnd!),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: context.appText.bodySmall?.copyWith(
@@ -281,6 +293,15 @@ class _ExtraTimeOption extends StatelessWidget {
 
 class _BookingScreenState extends State<BookingScreen> {
   BookingSortType sortType = BookingSortType.newest;
+  bool _showBackHomeFab = true;
+
+  void _setBackHomeFabVisible(bool visible) {
+    if (_showBackHomeFab == visible || !mounted) return;
+
+    setState(() {
+      _showBackHomeFab = visible;
+    });
+  }
 
   String _userLevel(BuildContext context) {
     final user = context.watch<AuthController>().user;
@@ -344,17 +365,25 @@ class _BookingScreenState extends State<BookingScreen> {
     if (booking == null) return false;
 
     final status = booking.status.toLowerCase().trim();
-    final start = booking.actualStartDatetime ?? booking.startDatetime;
-    final end = booking.endDatetime;
-    final now = DateTime.now();
+
+    final startRaw = booking.actualStartDatetime ?? booking.startDatetime;
+    final endRaw = booking.endDatetime;
 
     if (!allowedRole) return false;
-    if (!(status == 'approved' || status == 'in_progress')) return false;
-    if (start == null || end == null) return false;
+    if (status != 'in_meeting') return false;
+    if (startRaw == null || endRaw == null) return false;
 
-    if (now.isAfter(start) && now.isBefore(end)) return false;
+    // ✅ Convert EVERYTHING using DateTimeHelper (single source of truth)
+    final localStart = DateTimeHelper.toLocal(startRaw);
+    final localEnd = DateTimeHelper.toLocal(endRaw);
+    final now = DateTimeHelper.toLocal(DateTime.now());
 
-    return true;
+    final hasStarted =
+        now.isAfter(localStart) || now.isAtSameMomentAs(localStart);
+
+    final notEnded = now.isBefore(localEnd);
+
+    return hasStarted && notEnded;
   }
 
   bool _canDelete(Booking booking, bool isUser) {
@@ -813,115 +842,184 @@ class _BookingScreenState extends State<BookingScreen> {
           ),
         ],
       ),
-      body: Consumer<BookingController>(
-        builder: (context, controller, _) {
-          if (controller.loading && controller.bookings.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.all(AppConstants.pagePadding),
-              child: AppShimmerBox(height: 200),
-            );
+      body: NotificationListener<UserScrollNotification>(
+        onNotification: (notification) {
+          if (notification.metrics.axis != Axis.vertical) {
+            return false;
           }
 
-          if (controller.bookings.isEmpty) {
-            return RefreshIndicator(
-              color: AppConstants.primary,
-              onRefresh: controller.fetchBookings,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
+          if (notification.metrics.pixels <= 10) {
+            _setBackHomeFabVisible(true);
+            return false;
+          }
+
+          if (notification.direction == ScrollDirection.reverse) {
+            _setBackHomeFabVisible(false);
+          } else if (notification.direction == ScrollDirection.forward) {
+            _setBackHomeFabVisible(true);
+          }
+
+          return false;
+        },
+        child: Consumer<BookingController>(
+          builder: (context, controller, _) {
+            if (controller.loading && controller.bookings.isEmpty) {
+              return Padding(
                 padding: const EdgeInsets.all(AppConstants.pagePadding),
-                children: [
-                  const SizedBox(height: 190),
-                  Icon(
-                    Icons.event_busy_outlined,
-                    size: 52,
-                    color: context.appColors.textMuted,
-                  ),
-                  const SizedBox(height: 14),
-                  Center(
-                    child: Text(
-                      'No bookings found',
-                      style: context.appText.titleMedium?.copyWith(
-                        color: context.appColors.textMuted,
-                        fontWeight: FontWeight.w700,
+                child: AppShimmerBox(height: 200),
+              );
+            }
+
+            if (controller.bookings.isEmpty) {
+              return RefreshIndicator(
+                color: AppConstants.primary,
+                onRefresh: controller.fetchBookings,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(AppConstants.pagePadding),
+                  children: [
+                    const SizedBox(height: 190),
+                    Icon(
+                      Icons.event_busy_outlined,
+                      size: 52,
+                      color: context.appColors.textMuted,
+                    ),
+                    const SizedBox(height: 14),
+                    Center(
+                      child: Text(
+                        'No bookings found',
+                        style: context.appText.titleMedium?.copyWith(
+                          color: context.appColors.textMuted,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              );
+            }
+
+            final sortedBookings = _sortBookings(
+              controller.bookings,
+              isAdmin,
+              isUser,
+              isStatus ? 'pending' : null,
+            );
+
+            return RefreshIndicator(
+              color: AppConstants.primary,
+              onRefresh: () async {
+                await controller.fetchBookings();
+              },
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(
+                  AppConstants.pagePadding,
+                  8,
+                  AppConstants.pagePadding,
+                  24,
+                ),
+                itemCount: sortedBookings.length,
+                itemBuilder: (context, index) {
+                  final booking = sortedBookings[index];
+
+                  final allowedRole = isUser || isAdmin;
+
+                  final allowedByBooking = _canAddExtraTime(
+                    booking,
+                    allowedRole,
+                  );
+
+                  final canExtend = !controller.submitting && allowedByBooking;
+
+                  return BookingCard(
+                    booking: booking,
+                    onExtend: canExtend
+                        ? () {
+                            _openAddExtraTime(context, booking);
+                          }
+                        : null,
+                    onUpdate: _canUpdate(booking, isAdmin, isUser)
+                        ? () => _openUpdateBooking(context, booking)
+                        : null,
+                    onDelete: _canDelete(booking, isUser)
+                        ? () => _deleteBooking(context, booking.bookingId)
+                        : null,
+                    onApprove: _canApprove(booking, isAdmin)
+                        ? () => _approveBooking(context, booking.bookingId)
+                        : null,
+                    onReject: _canReject(booking, isAdmin)
+                        ? () => _rejectBooking(context, booking.bookingId)
+                        : null,
+                    isAdmin: isAdmin,
+                    onShare: () => BookingExportService.shareSingleBooking(
+                      context: context,
+                      booking: booking,
+                    ),
+                  );
+                },
               ),
             );
-          }
-
-          final sortedBookings = _sortBookings(
-            controller.bookings,
-            isAdmin,
-            isUser,
-            isStatus ? 'pending' : null,
-          );
-
-          return RefreshIndicator(
-            color: AppConstants.primary,
-            onRefresh: controller.fetchBookings,
-            child: ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(
-                AppConstants.pagePadding,
-                8,
-                AppConstants.pagePadding,
-                24,
-              ),
-              itemCount: sortedBookings.length,
-              itemBuilder: (context, index) {
-                final booking = sortedBookings[index];
-
-                final allowedRole = isUser || isAdmin;
-
-                debugPrint('========== BOOKING CARD BUILD ==========');
-                debugPrint('Booking ID: ${booking.bookingId}');
-                debugPrint('isUser: $isUser');
-                debugPrint('isAdmin: $isAdmin');
-                debugPrint('Chairman: ${booking.meetingChairman}');
-                debugPrint('Status: ${booking.status}');
-                debugPrint('controller.submitting: ${controller.submitting}');
-
-                final allowedByBooking = _canAddExtraTime(booking, allowedRole);
-
-                final canExtend = !controller.submitting && allowedByBooking;
-
-                debugPrint('Final canExtend: $canExtend');
-
-                return BookingCard(
-                  booking: booking,
-
-                  onExtend: canExtend
-                      ? () {
-                          debugPrint(
-                            'EXTRA TIME BUTTON TAPPED: ${booking.bookingId}',
-                          );
-                          _openAddExtraTime(context, booking);
-                        }
-                      : null,
-                  onUpdate: _canUpdate(booking, isAdmin, isUser)
-                      ? () => _openUpdateBooking(context, booking)
-                      : null,
-                  onDelete: _canDelete(booking, isUser)
-                      ? () => _deleteBooking(context, booking.bookingId)
-                      : null,
-                  onApprove: _canApprove(booking, isAdmin)
-                      ? () => _approveBooking(context, booking.bookingId)
-                      : null,
-                  onReject: _canReject(booking, isAdmin)
-                      ? () => _rejectBooking(context, booking.bookingId)
-                      : null,
-                  isAdmin: isAdmin,
-                  onShare: () => BookingExportService.shareSingleBooking(
-                    context: context,
-                    booking: booking,
+          },
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: AnimatedSlide(
+        offset: _showBackHomeFab ? Offset.zero : const Offset(0, 2),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        child: AnimatedOpacity(
+          opacity: _showBackHomeFab ? 1 : 0,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          child: IgnorePointer(
+            ignoring: !_showBackHomeFab,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8, right: 2),
+              child: FloatingActionButton.extended(
+                heroTag: 'back_to_room_screen',
+                elevation: 6,
+                highlightElevation: 3,
+                backgroundColor: AppConstants.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                icon: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                );
-              },
+                  child: const Icon(
+                    Icons.home_rounded,
+                    size: 19,
+                    color: Colors.white,
+                  ),
+                ),
+                label: Text(
+                  'Back Home',
+                  style: context.appText.labelLarge?.copyWith(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RoomScreen(showHomeHeader: true),
+                    ),
+                    (route) => false,
+                  );
+                },
+              ),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }

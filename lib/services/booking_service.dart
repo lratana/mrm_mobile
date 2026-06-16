@@ -17,14 +17,14 @@ class BookingService {
   final DateFormat _apiFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
 
   String apiDate(DateTime date) {
-    final utcDate = date.toUtc();
-    final formatted = _apiFormat.format(utcDate);
+    final utc = date.toUtc();
 
-    debugPrint('========== BOOKING REQUEST DATETIME ==========');
-    debugPrint('Input DateTime: $date');
-    debugPrint('Input isUtc: ${date.isUtc}');
-    debugPrint('UTC DateTime: $utcDate');
-    debugPrint('Request UTC Value: $formatted');
+    final formatted = utc.toIso8601String();
+
+    debugPrint('========== TIME DEBUG ==========');
+    debugPrint('Local: $date');
+    debugPrint('UTC: $utc');
+    debugPrint('Sent: $formatted');
 
     return formatted;
   }
@@ -185,18 +185,40 @@ class BookingService {
     required DateTime start,
     required DateTime end,
     int? ignoreId,
+    int? participants,
+    List<String>? equipment,
   }) async {
     final startValue = apiDate(start);
     final endValue = apiDate(end);
 
+    final query = <String, dynamic>{
+      'start_datetime': startValue,
+      'end_datetime': endValue,
+    };
+
+    if (ignoreId != null) {
+      query['ignore_id'] = ignoreId;
+    }
+
+    if (participants != null) {
+      query['participants'] = participants;
+    }
+
+    // ✅ FIX: send clean equipment list
+    if (equipment != null &&
+        equipment.isNotEmpty &&
+        !equipment.contains('Any')) {
+      query['equipment'] = equipment.join(',');
+    }
+
+    debugPrint('AVAILABLE ROOMS QUERY: $query');
+
     final response = await _api.get(
       'api/bookings/available-rooms',
-      query: {
-        'start_datetime': startValue,
-        'end_datetime': endValue,
-        'ignore_id': ignoreId,
-      },
+      query: query,
     );
+
+    debugPrint('AVAILABLE ROOMS RESPONSE: $response');
 
     return _parseRooms(response);
   }

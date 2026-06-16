@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/booking_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -13,10 +14,18 @@ class NewBookingScreen extends StatefulWidget {
   final Room room;
   final Booking? booking;
 
-  const NewBookingScreen({super.key, required this.room, this.booking});
+  final DateTime? initialStartDateTime;
+  final DateTime? initialEndDateTime;
+
+  const NewBookingScreen({
+    super.key,
+    required this.room,
+    this.booking,
+    this.initialStartDateTime,
+    this.initialEndDateTime,
+  });
 
   bool get isEdit => booking != null;
-
   @override
   State<NewBookingScreen> createState() => _NewBookingScreenState();
 }
@@ -110,10 +119,12 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
 
     final booking = widget.booking;
 
-    if (booking == null) return;
+    final start =
+        booking?.startDatetime?.toLocal() ??
+        widget.initialStartDateTime?.toLocal();
 
-    final start = booking.startDatetime?.toLocal();
-    final end = booking.endDatetime?.toLocal();
+    final end =
+        booking?.endDatetime?.toLocal() ?? widget.initialEndDateTime?.toLocal();
 
     if (start != null) {
       selectedDate = DateTime(start.year, start.month, start.day);
@@ -122,12 +133,15 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
 
     if (start != null && end != null) {
       final duration = end.difference(start);
-      durationHours = duration.inMinutes ~/ 60; // integer division
+
+      durationHours = duration.inMinutes ~/ 60;
+
       if (duration.inMinutes % 60 != 0) {
-        // handle remaining minutes if you want to round up
         durationHours += 1;
       }
     }
+
+    if (booking == null) return;
 
     meetingTitle.text = booking.meetingTitle;
 
@@ -177,6 +191,12 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
 
   DateTime get _endDateTime {
     return _startDateTime.add(Duration(hours: durationHours));
+  }
+
+  bool get _scheduleLocked {
+    return !widget.isEdit &&
+        widget.initialStartDateTime != null &&
+        widget.initialEndDateTime != null;
   }
 
   String _apiDate(DateTime date) {
@@ -281,6 +301,12 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
   }
 
   Future<void> _submit() async {
+    if (meetingTitle.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter meeting title')),
+      );
+      return;
+    }
     if (chairman.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter meeting chairman')),
@@ -344,7 +370,15 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
           ),
         );
 
-        Navigator.pop(context);
+        await controller.fetchBookings();
+
+        if (!mounted) return;
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const BookingScreen()),
+          (route) => false,
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(controller.error ?? 'Booking failed')),
@@ -385,85 +419,96 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
 
           const SizedBox(height: 24),
 
-          const _SectionTitle('Select Date *'),
+          if (_scheduleLocked) ...[
+            const _SectionTitle('Selected Schedule'),
 
-          _DateSelector(selectedDate: selectedDate, onTap: _pickBookingDate),
+            _LockedScheduleCard(
+              startDateTime: _startDateTime,
+              endDateTime: _endDateTime,
+            ),
 
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
+          ] else ...[
+            const _SectionTitle('Select Date *'),
 
-          const _SectionTitle('Select Time Option *'),
+            _DateSelector(selectedDate: selectedDate, onTap: _pickBookingDate),
 
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: timePresets.map((preset) {
-              final selected = selectedTimeOption == preset.value;
+            const SizedBox(height: 24),
 
-              return _TimeChoiceChip(
-                icon: preset.icon,
-                label: preset.label,
-                selected: selected,
-                onSelected: () => _applyTimePreset(preset),
-              );
-            }).toList(),
-          ),
+            const _SectionTitle('Select Time Option *'),
 
-          const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: timePresets.map((preset) {
+                final selected = selectedTimeOption == preset.value;
 
-          SelectedTimePanel(
-            text:
-                'Selected: ${_timeText(selectedTime)} - ${DateFormat('hh:mm a').format(_endDateTime.toLocal())}',
-          ),
+                return _TimeChoiceChip(
+                  icon: preset.icon,
+                  label: preset.label,
+                  selected: selected,
+                  onSelected: () => _applyTimePreset(preset),
+                );
+              }).toList(),
+            ),
 
-          const SizedBox(height: 24),
+            const SizedBox(height: 14),
 
-          const _SectionTitle('Select Start Time *'),
+            SelectedTimePanel(
+              text:
+                  'Selected: ${_timeText(selectedTime)} - ${DateFormat('hh:mm a').format(_endDateTime.toLocal())}',
+            ),
 
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: times.map((time) {
-              final selected =
-                  time.hour == selectedTime.hour &&
-                  time.minute == selectedTime.minute;
+            const SizedBox(height: 24),
 
-              return _StartTimeChip(
-                label: time.format(context),
-                selected: selected,
-                onSelected: () {
-                  setState(() {
-                    selectedTimeOption = 'custom';
-                    selectedTime = time;
-                  });
-                },
-              );
-            }).toList(),
-          ),
+            const _SectionTitle('Select Start Time *'),
 
-          const SizedBox(height: 26),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: times.map((time) {
+                final selected =
+                    time.hour == selectedTime.hour &&
+                    time.minute == selectedTime.minute;
 
-          const _SectionTitle('Booking Duration'),
-
-          _StepControlBox(
-            title: 'Duration\n(hours)',
-            value: durationHours,
-            onDecrease: durationHours > 1
-                ? () {
+                return _StartTimeChip(
+                  label: time.format(context),
+                  selected: selected,
+                  onSelected: () {
                     setState(() {
                       selectedTimeOption = 'custom';
-                      durationHours--;
+                      selectedTime = time;
                     });
-                  }
-                : null,
-            onIncrease: () {
-              setState(() {
-                selectedTimeOption = 'custom';
-                durationHours++;
-              });
-            },
-          ),
+                  },
+                );
+              }).toList(),
+            ),
 
-          const SizedBox(height: 22),
+            const SizedBox(height: 26),
+
+            const _SectionTitle('Booking Duration'),
+
+            _StepControlBox(
+              title: 'Duration\n(hours)',
+              value: durationHours,
+              onDecrease: durationHours > 1
+                  ? () {
+                      setState(() {
+                        selectedTimeOption = 'custom';
+                        durationHours--;
+                      });
+                    }
+                  : null,
+              onIncrease: () {
+                setState(() {
+                  selectedTimeOption = 'custom';
+                  durationHours++;
+                });
+              },
+            ),
+
+            const SizedBox(height: 24),
+          ],
 
           const _SectionTitle('Meeting Title *'),
 
@@ -611,6 +656,325 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
           ),
 
           const SizedBox(height: 30),
+        ],
+      ),
+    );
+  }
+}
+
+class _LockedScheduleCard extends StatelessWidget {
+  final DateTime startDateTime;
+  final DateTime endDateTime;
+
+  const _LockedScheduleCard({
+    required this.startDateTime,
+    required this.endDateTime,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dateText = DateFormat('EEEE, dd MMM yyyy').format(startDateTime);
+    final startText = DateFormat('hh:mm a').format(startDateTime);
+    final endText = DateFormat('hh:mm a').format(endDateTime);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _boxDecoration(context),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: context.appColors.primarySoft,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.lock_clock_rounded,
+                  color: AppConstants.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Schedule selected from available-room search',
+                  style: context.appText.bodyMedium?.copyWith(
+                    color: context.appColors.text,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          _LockedScheduleRow(
+            icon: Icons.calendar_month_rounded,
+            label: 'Date',
+            value: dateText,
+          ),
+
+          const SizedBox(height: 10),
+
+          _LockedScheduleRow(
+            icon: Icons.access_time_rounded,
+            label: 'Time',
+            value: '$startText - $endText',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LockedScheduleRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _LockedScheduleRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppConstants.primary),
+        const SizedBox(width: 10),
+        SizedBox(
+          width: 48,
+          child: Text(
+            label,
+            style: context.appText.bodySmall?.copyWith(
+              color: context.appColors.textMuted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: context.appText.bodyMedium?.copyWith(
+              color: context.appColors.text,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BookingHeroSummary extends StatelessWidget {
+  final Room room;
+  final String dateText;
+  final String startText;
+
+  const _BookingHeroSummary({
+    required this.room,
+    required this.dateText,
+    required this.startText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.primary,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppConstants.primary.withOpacity(0.22),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          RoomImageBox(
+            url: room.imageUrl,
+            width: 82,
+            height: 82,
+            borderRadius: BorderRadius.circular(18),
+          ),
+
+          const SizedBox(width: 14),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'BOOKING ROOM',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 10,
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+
+                const SizedBox(height: 5),
+
+                Text(
+                  room.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    height: 1.1,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                _HeroInfoRow(
+                  icon: Icons.calendar_month_rounded,
+                  text: dateText,
+                ),
+
+                const SizedBox(height: 5),
+
+                _HeroInfoRow(icon: Icons.access_time_rounded, text: startText),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _HeroInfoRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: Colors.white.withOpacity(0.82)),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.82),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class BookingStepCard extends StatelessWidget {
+  final String step;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Widget child;
+
+  const BookingStepCard({
+    super.key,
+    required this.step,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: context.appColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: context.appColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: context.appColors.shadow,
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: context.appColors.primarySoft,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: AppConstants.primary, size: 25),
+              ),
+
+              const SizedBox(width: 13),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'STEP $step',
+                      style: context.appText.bodySmall?.copyWith(
+                        color: AppConstants.primary,
+                        fontSize: 10,
+                        letterSpacing: 1,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+
+                    const SizedBox(height: 3),
+
+                    Text(
+                      title,
+                      style: context.appText.titleMedium?.copyWith(
+                        color: context.appColors.text,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+
+                    const SizedBox(height: 2),
+
+                    Text(
+                      subtitle,
+                      style: context.appText.bodySmall?.copyWith(
+                        color: context.appColors.textMuted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+
+          child,
         ],
       ),
     );

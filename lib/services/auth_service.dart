@@ -1,6 +1,7 @@
 import '../models/user_model.dart';
 import '../utils/constants.dart';
 import 'api_service.dart';
+import 'api_service.dart';
 
 class AuthResult {
   final String token;
@@ -13,6 +14,9 @@ class AuthResult {
 class AuthService {
   final ApiService _api = ApiService.instance;
 
+  // ---------------------------
+  // LOGIN (FIXED)
+  // ---------------------------
   Future<AuthResult> login({
     required String email,
     required String password,
@@ -26,21 +30,25 @@ class AuthService {
     final token = _extractToken(map);
 
     if (token == null || token.isEmpty) {
-      throw const ApiException(
-        'Login succeeded, but no token was returned by the API.',
-      );
+      throw const ApiException('Login succeeded but token is missing');
     }
+
+    // ✅ FIX #1: SAVE TOKEN TO STORAGE
+    await _api.setToken(token);
 
     final userMap = _extractUserMap(map);
 
     return AuthResult(
       token: token,
-      user: userMap == null ? null : AppUser.fromJson(userMap),
+      user: _safeUser(userMap),
       message: map['message']?.toString(),
     );
   }
 
-  Future<AuthResult?> register({
+  // ---------------------------
+  // REGISTER (FIXED)
+  // ---------------------------
+  Future<AuthResult> register({
     required String name,
     required String email,
     required String phoneNumber,
@@ -60,25 +68,24 @@ class AuthService {
 
     final map = _asMap(response);
     final token = _extractToken(map);
+
     final userMap = _extractUserMap(map);
 
-    if (token == null || token.isEmpty) {
-      return AuthResult(
-        token: '',
-        user: userMap == null ? null : AppUser.fromJson(userMap),
-        message:
-            map['message']?.toString() ??
-            'Account created successfully. Please sign in.',
-      );
+    // ✅ FIX #2: IF TOKEN EXISTS SAVE IT
+    if (token != null && token.isNotEmpty) {
+      await _api.setToken(token);
     }
 
     return AuthResult(
-      token: token,
-      user: userMap == null ? null : AppUser.fromJson(userMap),
-      message: map['message']?.toString(),
+      token: token ?? '',
+      user: _safeUser(userMap),
+      message: map['message']?.toString() ?? 'Success',
     );
   }
 
+  // ---------------------------
+  // UPDATE PROFILE (SAFE FIX)
+  // ---------------------------
   Future<AppUser?> updateProfile({
     required String name,
     required String email,
@@ -94,30 +101,21 @@ class AuthService {
         'phone_number': phoneNumber,
         '_method': 'PUT',
       },
-      files: imagePath == null || imagePath.isEmpty
+      files: (imagePath == null || imagePath.isEmpty)
           ? null
           : {'image': imagePath},
     );
 
     final map = _asMap(response);
 
-    final data = map['data'];
+    final user = _extractUserMap(map);
 
-    if (data is Map && data['user'] is Map) {
-      return AppUser.fromJson(Map<String, dynamic>.from(data['user']));
-    }
-
-    if (map['user'] is Map) {
-      return AppUser.fromJson(Map<String, dynamic>.from(map['user']));
-    }
-
-    if (data is Map) {
-      return AppUser.fromJson(Map<String, dynamic>.from(data));
-    }
-
-    return null;
+    return _safeUser(user);
   }
 
+  // ---------------------------
+  // FORGOT PASSWORD
+  // ---------------------------
   Future<String> forgotPassword(String email) async {
     final response = await _api.post(
       AppConstants.forgotPasswordPath,
@@ -126,28 +124,37 @@ class AuthService {
 
     final map = _asMap(response);
 
-    return map['message']?.toString() ?? 'Password reset link has been sent.';
+    return map['message']?.toString() ?? 'Password reset link sent';
   }
 
+  // ---------------------------
+  // LOGOUT (FIXED)
+  // ---------------------------
   Future<void> logout() async {
     try {
       await _api.post(AppConstants.logoutPath);
-    } catch (_) {
-      // Ignore logout API error.
-      // Controller will clear local token and user data.
-    }
+    } catch (_) {}
+
+    // ✅ always clear token locally
+    await _api.clearToken();
   }
 
+  // ---------------------------
+  // SAFE HELPERS
+  // ---------------------------
   Map<String, dynamic> _asMap(dynamic value) {
-    if (value is Map<String, dynamic>) {
-      return value;
-    }
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return {};
+  }
 
-    if (value is Map) {
-      return Map<String, dynamic>.from(value);
-    }
-
-    return <String, dynamic>{};
+  AppUser? _safeUser(dynamic value) {
+    try {
+      if (value is Map) {
+        return AppUser.fromJson(Map<String, dynamic>.from(value));
+      }
+    } catch (_) {}
+    return null;
   }
 
   Map<String, dynamic>? _extractUserMap(Map<String, dynamic> map) {
@@ -161,10 +168,6 @@ class AuthService {
     ];
 
     for (final item in candidates) {
-      if (item is Map<String, dynamic>) {
-        return item;
-      }
-
       if (item is Map) {
         return Map<String, dynamic>.from(item);
       }
@@ -188,9 +191,8 @@ class AuthService {
     ];
 
     for (final item in candidates) {
-      final text = item?.toString() ?? '';
-
-      if (text.isNotEmpty) {
+      final text = item?.toString();
+      if (text != null && text.isNotEmpty) {
         return text;
       }
     }

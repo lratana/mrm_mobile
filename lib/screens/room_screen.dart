@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/controllers/notification_controller.dart';
+import 'package:flutter_application_1/screens/booking_screen.dart';
+import 'package:flutter_application_1/screens/booking_search_screen.dart';
+import 'package:flutter_application_1/screens/calendar_screen.dart';
 import 'package:flutter_application_1/screens/notification_screen.dart';
-import 'package:flutter_application_1/screens/theme_settings_screen.dart';
+import 'package:flutter_application_1/screens/settings_screen.dart';
 import 'package:flutter_application_1/utils/app_palette.dart';
 import 'package:flutter_application_1/utils/app_shimmer.dart';
 import 'package:image_picker/image_picker.dart';
@@ -156,26 +159,27 @@ class _RoomScreenState extends State<RoomScreen> {
                     ),
                   ),
 
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppConstants.pagePadding,
-                    10,
-                    AppConstants.pagePadding,
-                    0,
-                  ),
-                  sliver: SliverToBoxAdapter(
-                    child: _SearchAndFilters(
-                      controller: searchController,
-                      onSubmitted: (q) {
-                        setState(() {
-                          availabilityFilterEnabled = false;
-                        });
+                if (!widget.showHomeHeader)
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppConstants.pagePadding,
+                      10,
+                      AppConstants.pagePadding,
+                      0,
+                    ),
+                    sliver: SliverToBoxAdapter(
+                      child: _SearchAndFilters(
+                        controller: searchController,
+                        onSubmitted: (q) {
+                          setState(() {
+                            availabilityFilterEnabled = false;
+                          });
 
-                        roomController.fetchRooms(q: q.trim(), refresh: true);
-                      },
+                          roomController.fetchRooms(q: q.trim(), refresh: true);
+                        },
+                      ),
                     ),
                   ),
-                ),
 
                 if (loading && rooms.isEmpty)
                   SliverToBoxAdapter(
@@ -224,146 +228,40 @@ class _RoomScreenState extends State<RoomScreen> {
   }
 
   List<Widget> _homeSlivers(BuildContext context, RoomController controller) {
-    final featured = controller.featuredRooms;
-    final available = controller.availableRooms.take(4).toList();
+    final rooms = controller.rooms.isNotEmpty
+        ? controller.rooms
+        : controller.featuredRooms;
 
-    final safeHeroIndex = featured.isEmpty
-        ? 0
-        : currentHero.clamp(0, featured.length - 1).toInt();
+    final unreadCount = context.watch<NotificationController>().unreadCount;
 
     return [
-      SliverToBoxAdapter(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 22),
+      SliverToBoxAdapter(child: _HomeShortcutGrid(unreadCount: unreadCount)),
 
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppConstants.pagePadding,
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final width = constraints.maxWidth;
-
-                  final double heroHeight;
-
-                  if (width < 330) {
-                    heroHeight = 290;
-                  } else if (width < 380) {
-                    heroHeight = 275;
-                  } else if (width < 500) {
-                    heroHeight = 260;
-                  } else {
-                    heroHeight = 280;
-                  }
-
-                  return SizedBox(
-                    width: double.infinity,
-                    height: heroHeight,
-                    child: featured.isEmpty
-                        ? Container(
-                            decoration: BoxDecoration(
-                              color: context.appColors.surface,
-                              borderRadius: BorderRadius.circular(22),
-                              border: Border.all(
-                                color: context.appColors.border,
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              'No featured rooms',
-                              style: context.appText.bodyMedium?.copyWith(
-                                color: context.appColors.textMuted,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          )
-                        : PageView.builder(
-                            controller: pageController,
-                            itemCount: featured.length,
-                            onPageChanged: (index) {
-                              setState(() {
-                                currentHero = index;
-                              });
-                            },
-                            itemBuilder: (context, index) {
-                              final room = featured[index];
-
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ),
-                                child: FeaturedHeroRoomCard(
-                                  room: room,
-                                  onBook: () => _openBooking(room),
-                                ),
-                              );
-                            },
-                          ),
-                  );
-                },
-              ),
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(
+          AppConstants.pagePadding,
+          22,
+          AppConstants.pagePadding,
+          14,
+        ),
+        sliver: SliverToBoxAdapter(
+          child: Text(
+            'Featured Spaces',
+            style: context.appText.headlineSmall?.copyWith(
+              color: context.appColors.text,
+              fontWeight: FontWeight.w900,
             ),
-
-            const SizedBox(height: 14),
-
-            if (featured.isNotEmpty)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  featured.length > 5 ? 5 : featured.length,
-                  (index) {
-                    final active = index == safeHeroIndex;
-
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: active ? 28 : 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: active
-                            ? AppConstants.primary
-                            : context.appColors.border,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppConstants.pagePadding,
-                34,
-                AppConstants.pagePadding,
-                20,
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final compact = constraints.maxWidth < 350;
-
-                  return Text(
-                    'Available Rooms',
-                    style: context.appText.displaySmall?.copyWith(
-                      fontSize: compact ? 24 : 30,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+          ),
         ),
       ),
 
-      if (available.isEmpty)
+      if (rooms.isEmpty)
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(AppConstants.pagePadding),
             child: Center(
               child: Text(
-                'No available rooms',
+                'No rooms found',
                 style: context.appText.bodyMedium?.copyWith(
                   color: context.appColors.textMuted,
                   fontWeight: FontWeight.w700,
@@ -379,17 +277,19 @@ class _RoomScreenState extends State<RoomScreen> {
           ),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
-              final room = available[index];
+              final room = rooms[index];
 
-              return CompactRoomCard(
+              return FeaturedSpaceCard(
                 room: room,
-                onBook: () => _openBooking(room),
+                onTap: () {
+                  //onTap
+                },
               );
-            }, childCount: available.length),
+            }, childCount: rooms.length),
           ),
         ),
 
-      const SliverToBoxAdapter(child: SizedBox(height: 24)),
+      const SliverToBoxAdapter(child: SizedBox(height: 26)),
     ];
   }
 }
@@ -527,9 +427,8 @@ class _AppDrawer extends StatelessWidget {
                   ),
                   _DrawerItem(
                     icon: Icons.settings_outlined,
-                    title: 'Appearance',
-                    onTap: () =>
-                        _openPage(context, const ThemeSettingsScreen()),
+                    title: 'Settings',
+                    onTap: () => _openPage(context, const SettingsScreen()),
                   ),
                   Theme(
                     data: Theme.of(
@@ -969,80 +868,371 @@ class _TopToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unreadCount = context.watch<NotificationController>().unreadCount;
+    final user = context.watch<AuthController>().user;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 390;
-        final veryCompact = constraints.maxWidth < 335;
+    String name = 'User';
+    String? photoUrl;
 
-        return Container(
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 10,
-            left: compact ? 14 : 24,
-            right: compact ? 14 : 24,
-            bottom: 12,
+    try {
+      final json = (user as dynamic?)?.toJson();
+
+      if (json is Map) {
+        name = json['name']?.toString() ?? 'User';
+        photoUrl =
+            json['photo']?.toString() ??
+            json['profile_image']?.toString() ??
+            json['avatar']?.toString();
+      }
+    } catch (_) {}
+
+    final safePhotoUrl = photoUrl != null && photoUrl!.trim().isNotEmpty
+        ? photoUrl!
+        : 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=004D57&color=fff';
+
+    return Container(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 8,
+        left: 18,
+        right: 18,
+        bottom: 14,
+      ),
+      decoration: BoxDecoration(
+        color: context.appColors.background,
+        boxShadow: [
+          BoxShadow(
+            color: context.appColors.shadow,
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
-          decoration: BoxDecoration(
-            color: context.appColors.background,
-            boxShadow: [
-              BoxShadow(
-                color: context.appColors.shadow,
-                blurRadius: 18,
-                offset: const Offset(0, 5),
+        ],
+      ),
+      child: Row(
+        children: [
+          // InkWell(
+          //   borderRadius: BorderRadius.circular(12),
+          //   onTap: onMenuTap,
+          //   child: const Padding(
+          //     padding: EdgeInsets.all(8),
+          //     child: Icon(
+          //       Icons.menu_rounded,
+          //       color: AppConstants.primary,
+          //       size: 26,
+          //     ),
+          //   ),
+          // ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Meeting Rooms',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.appText.titleLarge?.copyWith(
+                color: AppConstants.primary,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: context.appColors.primarySoft,
+                  backgroundImage: NetworkImage(safePhotoUrl),
+                ),
+
+                // if (unreadCount > 0)
+                //   Positioned(
+                //     top: -8,
+                //     right: -8,
+                //     child: Container(
+                //       constraints: const BoxConstraints(
+                //         minWidth: 20,
+                //         minHeight: 20,
+                //       ),
+                //       padding: const EdgeInsets.symmetric(
+                //         horizontal: 5,
+                //         vertical: 2,
+                //       ),
+                //       decoration: BoxDecoration(
+                //         color: context.appColors.danger,
+                //         borderRadius: BorderRadius.circular(999),
+                //         border: Border.all(
+                //           color: context.appColors.background,
+                //           width: 2,
+                //         ),
+                //       ),
+                //       alignment: Alignment.center,
+                //       child: Text(
+                //         unreadCount > 99 ? '99+' : '$unreadCount',
+                //         style: const TextStyle(
+                //           color: Colors.white,
+                //           fontSize: 10,
+                //           height: 1,
+                //           fontWeight: FontWeight.w900,
+                //         ),
+                //       ),
+                //     ),
+                //   ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeShortcutGrid extends StatelessWidget {
+  final int unreadCount;
+
+  const _HomeShortcutGrid({required this.unreadCount});
+
+  void _openPage(BuildContext context, Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppConstants.pagePadding,
+        22,
+        AppConstants.pagePadding,
+        0,
+      ),
+      decoration: BoxDecoration(
+        color: context.appColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.appColors.border),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _ShortcutTile(
+                  icon: Icons.add_circle_outline_rounded,
+                  label: 'New Booking',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const BookingSearchScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              _VerticalDividerLine(),
+              Expanded(
+                child: _ShortcutTile(
+                  icon: Icons.event_note_rounded,
+                  label: 'Bookings',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const BookingScreen()),
+                    );
+                    // _openPage(
+                    //   context,
+                    //   const _SimplePage(
+                    //     title: 'Bookings',
+                    //     subtitle: 'Reservations',
+                    //     icon: Icons.event_note_rounded,
+                    //     description:
+                    //         'View and manage your meeting room bookings.',
+                    //     details: [
+                    //       _PageDetail(
+                    //         icon: Icons.event_available_rounded,
+                    //         title: 'Upcoming Bookings',
+                    //         description: 'Check your scheduled reservations',
+                    //       ),
+                    //       _PageDetail(
+                    //         icon: Icons.edit_calendar_rounded,
+                    //         title: 'Manage Booking',
+                    //         description: 'Update or cancel reservations',
+                    //       ),
+                    //     ],
+                    //   ),
+                    // );
+                  },
+                ),
+              ),
+              _VerticalDividerLine(),
+              Expanded(
+                child: _ShortcutTile(
+                  icon: Icons.notifications_active_outlined,
+                  label: 'Notifications',
+                  badgeCount: unreadCount,
+                  onTap: () {
+                    _openPage(context, const NotificationScreen());
+                  },
+                ),
               ),
             ],
           ),
-          child: Row(
+
+          Divider(height: 1, color: context.appColors.border),
+
+          Row(
             children: [
-              _CircleIcon(
-                icon: Icons.menu_rounded,
-                onTap: onMenuTap,
-                compact: compact,
+              Expanded(
+                child: _ShortcutTile(
+                  icon: Icons.calendar_today_outlined,
+                  label: 'Calendar',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CalendarScreen()),
+                    );
+                    // _openPage(
+                    //   context,
+                    //   const _SimplePage(
+                    //     title: 'Calendar',
+                    //     subtitle: 'Schedule',
+                    //     icon: Icons.calendar_today_outlined,
+                    //     description:
+                    //         'Review room booking schedules and availability.',
+                    //     details: [
+                    //       _PageDetail(
+                    //         icon: Icons.today_outlined,
+                    //         title: 'Daily View',
+                    //         description: 'See bookings by date',
+                    //       ),
+                    //       _PageDetail(
+                    //         icon: Icons.access_time_outlined,
+                    //         title: 'Time Slots',
+                    //         description: 'Check available booking times',
+                    //       ),
+                    //     ],
+                    //   ),
+                    // );
+                  },
+                ),
+              ),
+              _VerticalDividerLine(),
+              Expanded(
+                child: _ShortcutTile(
+                  icon: Icons.support_agent_rounded,
+                  label: 'Help Desk',
+                  onTap: () {
+                    _openPage(context, const HelpScreen());
+                  },
+                ),
+              ),
+              _VerticalDividerLine(),
+              Expanded(
+                child: _ShortcutTile(
+                  icon: Icons.settings_outlined,
+                  label: 'Settings',
+                  onTap: () {
+                    _openPage(context, const SettingsScreen());
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShortcutTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int badgeCount;
+  final VoidCallback onTap;
+
+  const _ShortcutTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.badgeCount = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: AppConstants.primary.withOpacity(0.12),
+        highlightColor: AppConstants.primary.withOpacity(0.06),
+        child: SizedBox(
+          width: double.infinity,
+          height: 104,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: AppConstants.primary, size: 27),
+                  const SizedBox(height: 11),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: context.appText.bodySmall?.copyWith(
+                      color: context.appColors.text,
+                      fontSize: 12,
+                      letterSpacing: .6,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
 
-              if (!veryCompact) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Workspace',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.appText.bodySmall?.copyWith(
-                          color: context.appColors.textMuted,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
+              if (badgeCount > 0)
+                Positioned(
+                  top: 15,
+                  right: 16,
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 20,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: context.appColors.danger,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      badgeCount > 99 ? '99+' : '$badgeCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Meeting Rooms',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.appText.titleMedium?.copyWith(
-                          color: context.appColors.text,
-                          fontSize: compact ? 15 : 17,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ] else
-                const Spacer(),
-
-              if (!compact) const _LanguagePill(),
-
-              if (!compact) const SizedBox(width: 10),
-
-              _NotificationButton(unreadCount: unreadCount, compact: compact),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
+  }
+}
+
+class _VerticalDividerLine extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 1, height: 104, color: context.appColors.border);
   }
 }
 
@@ -1411,31 +1601,31 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+// class SettingsScreen extends StatelessWidget {
+//   const SettingsScreen({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return const _SimplePage(
-      title: 'Settings',
-      subtitle: 'Application Preferences',
-      icon: Icons.settings_outlined,
-      description: 'Manage your account preferences and application settings.',
-      details: [
-        _PageDetail(
-          icon: Icons.palette_outlined,
-          title: 'Appearance',
-          description: 'Customize display preferences',
-        ),
-        _PageDetail(
-          icon: Icons.notifications_outlined,
-          title: 'Notifications',
-          description: 'Control booking alerts',
-        ),
-      ],
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return const _SimplePage(
+//       title: 'Settings',
+//       subtitle: 'Application Preferences',
+//       icon: Icons.settings_outlined,
+//       description: 'Manage your account preferences and application settings.',
+//       details: [
+//         _PageDetail(
+//           icon: Icons.palette_outlined,
+//           title: 'Appearance',
+//           description: 'Customize display preferences',
+//         ),
+//         _PageDetail(
+//           icon: Icons.notifications_outlined,
+//           title: 'Notifications',
+//           description: 'Control booking alerts',
+//         ),
+//       ],
+//     );
+//   }
+// }
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});

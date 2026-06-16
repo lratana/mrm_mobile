@@ -1,16 +1,30 @@
 import 'package:flutter/material.dart';
 
 class AppConstants {
-  AppConstants._();
+  // AppConstants._();
+
+  static const bool isProduction = false;
+
+  static const String baseUrl = isProduction
+      ? 'https://starlink98.cloud'
+      : 'http://10.0.2.2:8000';
+
+  static const String storageBaseUrl = isProduction
+      ? 'https://starlink98.cloud/storage'
+      : 'http://10.0.2.2:8000/storage';
+
   // Change this to your Laravel API base URL.
   // Android emulator local Laravel: http://10.0.2.2:8000/api
   // iOS simulator local Laravel: http://127.0.0.1:8000/api
   // static const String baseUrl = 'https://starlink98.cloud';
-  static const String baseUrl = 'http://10.0.2.2:8000';
+  // static const String baseUrl = 'http://10.0.2.2:8000';
+
+  // static const String baseUrl = 'http://10.0.2.2:8000/api';
+  // static const String storageBaseUrl = 'http://10.0.2.2:8000/storage';
 
   // Used to convert Laravel public disk image paths such as rooms/images/a.jpg
   // into http://.../storage/rooms/images/a.jpg
-  static const String storageBaseUrl = 'https://starlink98.cloud/storage';
+  // static const String storageBaseUrl = 'https://starlink98.cloud/storage';
 
   // Put a valid Bearer token here, or replace ApiService token logic with login/secure storage.
   static const String authToken = '';
@@ -22,6 +36,7 @@ class AppConstants {
   static const String logoutPath = 'api/logout';
 
   static const String loginHeroAsset = 'assets/images/login_hero.jpg';
+  static const String appLogoAsset = 'assets/images/logos.png';
   static const String resetHeroAsset = 'assets/images/reset_hero.jpg';
 
   static const Duration requestTimeout = Duration(seconds: 25);

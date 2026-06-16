@@ -89,6 +89,18 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncNotificationState(
+        isAuthenticated: context.read<AuthController>().isAuthenticated,
+        isOnline: context.read<CheckNetwork>().isOnline,
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final network = context.watch<CheckNetwork>();
     final auth = context.watch<AuthController>();
