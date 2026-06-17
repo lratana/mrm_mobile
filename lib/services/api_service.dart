@@ -168,6 +168,21 @@ class ApiService {
     }
   }
 
+  // PUT
+  // -------------------------------
+  Future<dynamic> patch(String path, {Map<String, dynamic>? body}) async {
+    try {
+      final res = await http
+          .patch(_uri(path), headers: _headers, body: jsonEncode(body ?? {}))
+          .timeout(AppConstants.requestTimeout);
+
+      _throwIfFailed(res);
+      return _decode(res);
+    } on TimeoutException {
+      throw const ApiException('Request timeout');
+    }
+  }
+
   // -------------------------------
   // DELETE
   // -------------------------------
@@ -193,7 +208,7 @@ class ApiService {
     Map<String, String>? files,
   }) async {
     try {
-      final request = http.MultipartRequest('POST', _uri(path));
+      final request = http.MultipartRequest('PATCH', _uri(path));
 
       request.headers.addAll({
         'Accept': 'application/json',

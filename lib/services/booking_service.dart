@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_application_1/utils/date_time_helper.dart';
 import 'package:intl/intl.dart';
 
 import '../models/booking_model.dart';
@@ -114,18 +115,75 @@ class BookingService {
     return Booking.fromJson(_parseObject(response));
   }
 
-  Future<Booking> createBooking(Map<String, dynamic> payload) async {
-    debugPrint('========== CREATE BOOKING PAYLOAD ==========');
-    debugPrint('start_datetime: ${payload['start_datetime']}');
-    debugPrint('end_datetime: ${payload['end_datetime']}');
+  Map<String, dynamic> _normalizeBookingPayload(Map<String, dynamic> payload) {
+    final fixedPayload = Map<String, dynamic>.from(payload);
 
-    final response = await _api.post('api/bookings/create', body: payload);
+    fixedPayload['start_datetime'] = _toApiUtcDateTime(
+      fixedPayload['start_datetime'],
+    );
+
+    fixedPayload['end_datetime'] = _toApiUtcDateTime(
+      fixedPayload['end_datetime'],
+    );
+
+    if (fixedPayload['actual_start_datetime'] != null) {
+      fixedPayload['actual_start_datetime'] = _toApiUtcDateTime(
+        fixedPayload['actual_start_datetime'],
+      );
+    }
+
+    return fixedPayload;
+  }
+
+  String _toApiUtcDateTime(dynamic value) {
+    if (value == null) return '';
+
+    // ✅ Best case: payload sends DateTime object
+    if (value is DateTime) {
+      return DateTimeHelper.toApiUtcString(value);
+    }
+
+    final raw = value.toString().trim();
+
+    if (raw.isEmpty) return '';
+
+    final hasTimezone = RegExp(r'(Z|[+-]\d{2}:?\d{2})$').hasMatch(raw);
+
+    // ✅ ISO string with timezone
+    // Example: 2026-06-17T06:38:00.000Z
+    // Example: 2026-06-17T13:38:00+07:00
+    if (hasTimezone) {
+      try {
+        return DateTimeHelper.toApiUtcString(DateTime.parse(raw));
+      } catch (_) {
+        return raw;
+      }
+    }
+
+    // ✅ Plain string from UI: 2026-06-17 13:38:00
+    // Treat it as LOCAL Cambodia/device time, then convert to UTC.
+    try {
+      final localDateTime = DateTime.parse(raw.replaceFirst(' ', 'T'));
+      return DateTimeHelper.toApiUtcString(localDateTime);
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  Future<Booking> createBooking(Map<String, dynamic> payload) async {
+    final fixedPayload = _normalizeBookingPayload(payload);
+
+    debugPrint('========== CREATE BOOKING PAYLOAD ==========');
+    debugPrint('start_datetime: ${fixedPayload['start_datetime']}');
+    debugPrint('end_datetime: ${fixedPayload['end_datetime']}');
+
+    final response = await _api.post('api/bookings/create', body: fixedPayload);
 
     final booking = Booking.fromJson(_parseObject(response));
 
     debugPrint('========== CREATE BOOKING RESPONSE ==========');
-    debugPrint('Parsed start: ${booking.startDatetime}');
-    debugPrint('Parsed end: ${booking.endDatetime}');
+    debugPrint('Parsed start UTC: ${booking.startDatetime}');
+    debugPrint('Parsed end UTC: ${booking.endDatetime}');
     debugPrint('Local start: ${booking.startDatetime?.toLocal()}');
     debugPrint('Local end: ${booking.endDatetime?.toLocal()}');
 
@@ -133,18 +191,23 @@ class BookingService {
   }
 
   Future<Booking> updateBooking(int id, Map<String, dynamic> payload) async {
-    debugPrint('========== UPDATE BOOKING PAYLOAD ==========');
-    debugPrint('Booking ID: $id');
-    debugPrint('start_datetime: ${payload['start_datetime']}');
-    debugPrint('end_datetime: ${payload['end_datetime']}');
+    final fixedPayload = _normalizeBookingPayload(payload);
 
-    final response = await _api.put('api/bookings/update/$id', body: payload);
+    debugPrint('========== UPDATE BOOKING PAYLOAD ==========');
+    debugPrint('booking_id: $id');
+    debugPrint('start_datetime: ${fixedPayload['start_datetime']}');
+    debugPrint('end_datetime: ${fixedPayload['end_datetime']}');
+
+    final response = await _api.put(
+      'api/bookings/update/$id',
+      body: fixedPayload,
+    );
 
     final booking = Booking.fromJson(_parseObject(response));
 
     debugPrint('========== UPDATE BOOKING RESPONSE ==========');
-    debugPrint('Parsed start: ${booking.startDatetime}');
-    debugPrint('Parsed end: ${booking.endDatetime}');
+    debugPrint('Parsed start UTC: ${booking.startDatetime}');
+    debugPrint('Parsed end UTC: ${booking.endDatetime}');
     debugPrint('Local start: ${booking.startDatetime?.toLocal()}');
     debugPrint('Local end: ${booking.endDatetime?.toLocal()}');
 
@@ -157,18 +220,28 @@ class BookingService {
     required DateTime end,
     int? ignoreId,
   }) async {
-    final startValue = apiDate(start);
-    final endValue = apiDate(end);
+    final startValue = DateTimeHelper.toApiUtcString(start);
+    final endValue = DateTimeHelper.toApiUtcString(end);
 
-    final response = await _api.get(
-      'api/bookings/availability',
-      query: {
-        'room_id': roomId,
-        'start_datetime': startValue,
-        'end_datetime': endValue,
-        'ignore_id': ignoreId,
-      },
-    );
+    debugPrint('========== AVAILABILITY CHECK ==========');
+    debugPrint('Local start: $start');
+    debugPrint('Local end: $end');
+    debugPrint('UTC start sent: $startValue');
+    debugPrint('UTC end sent: $endValue');
+
+    final query = <String, dynamic>{
+      'room_id': roomId,
+      'start_datetime': startValue,
+      'end_datetime': endValue,
+    };
+
+    if (ignoreId != null) {
+      query['ignore_id'] = ignoreId;
+    }
+
+    debugPrint('Availability query: $query');
+
+    final response = await _api.get('api/bookings/availability', query: query);
 
     if (response is Map && response['data'] is Map) {
       return Map<String, dynamic>.from(response['data'] as Map);
@@ -188,8 +261,16 @@ class BookingService {
     int? participants,
     List<String>? equipment,
   }) async {
-    final startValue = apiDate(start);
-    final endValue = apiDate(end);
+    final startValue = DateTimeHelper.toApiUtcString(start);
+    final endValue = DateTimeHelper.toApiUtcString(end);
+
+    debugPrint('========== AVAILABLE ROOMS CHECK ==========');
+    debugPrint('Local start: $start');
+    debugPrint('Local end: $end');
+    debugPrint('UTC start sent: $startValue');
+    debugPrint('UTC end sent: $endValue');
+    debugPrint('start isUtc: ${start.isUtc}');
+    debugPrint('end isUtc: ${end.isUtc}');
 
     final query = <String, dynamic>{
       'start_datetime': startValue,
@@ -200,25 +281,28 @@ class BookingService {
       query['ignore_id'] = ignoreId;
     }
 
-    if (participants != null) {
+    if (participants != null && participants > 0) {
       query['participants'] = participants;
     }
 
-    // ✅ FIX: send clean equipment list
-    if (equipment != null &&
-        equipment.isNotEmpty &&
-        !equipment.contains('Any')) {
-      query['equipment'] = equipment.join(',');
+    final hasAnyEquipment =
+        equipment?.map((e) => e.toLowerCase().trim()).contains('any') ?? false;
+
+    if (equipment != null && equipment.isNotEmpty && !hasAnyEquipment) {
+      query['equipment'] = equipment
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .join(',');
     }
 
-    debugPrint('AVAILABLE ROOMS QUERY: $query');
+    debugPrint('Available rooms query: $query');
 
     final response = await _api.get(
       'api/bookings/available-rooms',
       query: query,
     );
 
-    debugPrint('AVAILABLE ROOMS RESPONSE: $response');
+    debugPrint('Available rooms response: $response');
 
     return _parseRooms(response);
   }
@@ -272,30 +356,22 @@ class BookingService {
   }
 
   Future<Booking> startMeeting(int id) async {
-    debugPrint('========== START MEETING ==========');
-    debugPrint('Booking ID: $id');
-
     final response = await _api.post(
       'api/bookings/start/$id', // backend route for starting meeting
     );
 
     final booking = Booking.fromJson(_parseObject(response));
 
-    debugPrint('Meeting started: ${booking.actualStartDatetime}');
     return booking;
   }
 
   Future<Booking> leaveMeeting(int id) async {
-    debugPrint('========== LEAVE MEETING ==========');
-    debugPrint('Booking ID: $id');
-
     final response = await _api.post(
       'api/bookings/leave/$id', // backend route for leaving meeting
     );
 
     final booking = Booking.fromJson(_parseObject(response));
 
-    debugPrint('Meeting ended: ${booking.actualEndDatetime}');
     return booking;
   }
 
@@ -303,19 +379,12 @@ class BookingService {
     required int id,
     required int extraHours,
   }) async {
-    debugPrint('========== EXTEND BOOKING ==========');
-    debugPrint('Booking ID: $id');
-    debugPrint('Extra hours: $extraHours');
-
     final response = await _api.put(
       'api/bookings/extend-time/$id',
       body: {'extra_hours': extraHours},
     );
 
     final booking = Booking.fromJson(_parseObject(response));
-
-    debugPrint('Updated raw end: ${booking.endDatetime}');
-    debugPrint('Updated local end: ${booking.endDatetime?.toLocal()}');
 
     return booking;
   }

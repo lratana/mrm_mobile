@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/utils/date_time_helper.dart';
 import 'package:flutter_application_1/widgets/booking_export_menu.dart';
 import 'package:intl/intl.dart';
 
@@ -44,7 +45,7 @@ class BookingCard extends StatelessWidget {
       case 'completed':
         return AppConstants.primary;
       default:
-        return AppConstants.primary;
+        return const Color.fromARGB(255, 255, 100, 86);
     }
   }
 
@@ -82,29 +83,39 @@ class BookingCard extends StatelessWidget {
   String? _adminDateText() {
     final createdAt = booking.createdAt;
     final updatedAt = booking.updatedAt;
+
     final formatter = DateFormat('yyyy-MM-dd hh:mm a');
 
     if (createdAt == null && updatedAt == null) {
       return null;
     }
 
-    if (createdAt != null &&
-        updatedAt != null &&
-        updatedAt.isAfter(createdAt)) {
-      return 'Updated: ${formatter.format(updatedAt.toLocal())}';
+    // 🔥 Convert UTC → LOCAL for display
+    final localCreated = createdAt != null
+        ? DateTimeHelper.toLocal(createdAt)
+        : null;
+
+    final localUpdated = updatedAt != null
+        ? DateTimeHelper.toLocal(updatedAt)
+        : null;
+
+    if (localCreated != null &&
+        localUpdated != null &&
+        localUpdated.isAfter(localCreated)) {
+      return 'Updated: ${formatter.format(localUpdated)}';
     }
 
-    if (createdAt != null) {
-      return 'Created: ${formatter.format(createdAt.toLocal())}';
+    if (localCreated != null) {
+      return 'Created: ${formatter.format(localCreated)}';
     }
 
-    return 'Updated: ${formatter.format(updatedAt!.toLocal())}';
+    return 'Updated: ${formatter.format(localUpdated!)}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final start = booking.startDatetime;
-    final end = booking.endDatetime;
+    final start = DateTimeHelper.toLocal(booking.startDatetime!);
+    final end = DateTimeHelper.toLocal(booking.endDatetime!);
 
     final dateFormat = DateFormat('EEE, MMM d');
     final timeFormat = DateFormat('hh:mm a');
@@ -115,13 +126,14 @@ class BookingCard extends StatelessWidget {
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 360;
         final veryCompact = constraints.maxWidth < 315;
+
         debugPrint(
           start == null
               ? 'No schedule'
-              : '${dateFormat.format(start.toLocal())} • '
-                    '${dateFormat.format(end!.toLocal())} '
-                    '${timeFormat.format(start.toLocal())}'
-                    '${end == null ? '' : ' - ${timeFormat.format(end.toLocal())}'}',
+              : end == null
+              ? '${dateFormat.format(start)} • ${timeFormat.format(start)}'
+              : '${dateFormat.format(end)} • ${dateFormat.format(end)} '
+                    '${timeFormat.format(start)} - ${timeFormat.format(end)}',
         );
         return Container(
           width: double.infinity,
@@ -428,6 +440,8 @@ class SchedulePanel extends StatelessWidget {
     final dateFormat = DateFormat('EEE, MMM d');
     final timeFormat = DateFormat('hh:mm a');
 
+    final localStart = start;
+    final localEnd = end;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -441,8 +455,8 @@ class SchedulePanel extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppConstants.chipBg, // soft background
-              shape: BoxShape.circle, // circle icon background
+              color: AppConstants.chipBg,
+              shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -452,32 +466,36 @@ class SchedulePanel extends StatelessWidget {
               ],
             ),
             child: const Icon(
-              Icons.date_range, // slightly bolder icon
-              color: AppConstants.primary, // accent color for better visibility
+              Icons.date_range,
+              color: AppConstants.primary,
               size: 20,
             ),
           ),
+
           const SizedBox(width: 10),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Start
                 Text(
-                  start == null
+                  localStart == null
                       ? 'No schedule'
-                      : 'Start: ${dateFormat.format(start!.toLocal())} • ${timeFormat.format(start!.toLocal())}',
+                      : 'Start: ${dateFormat.format(localStart)} • ${timeFormat.format(localStart)}',
                   style: context.appText.bodySmall?.copyWith(
                     fontWeight: FontWeight.w700,
                     fontSize: AppConstants.radiusSmall,
                   ),
                 ),
+
                 const SizedBox(height: 4),
+
                 // End
                 Text(
-                  end == null
+                  localEnd == null
                       ? ''
-                      : 'End: ${dateFormat.format(end!.toLocal())} • ${timeFormat.format(end!.toLocal())}',
+                      : 'End: ${dateFormat.format(localEnd)} • ${timeFormat.format(localEnd)}',
                   style: context.appText.bodySmall?.copyWith(
                     fontWeight: FontWeight.w400,
                     fontSize: AppConstants.radiusSmall,

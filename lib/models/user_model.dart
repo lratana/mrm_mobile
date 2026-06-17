@@ -35,7 +35,7 @@ class AppUser {
       'id': id,
       'name': name,
       'email': email,
-      'phone_number': phoneNumber,
+      'phone': phoneNumber,
       'level': level,
       'photo': photo,
     };

@@ -32,6 +32,7 @@ class AppConstants {
   // Auth endpoints. Change these if your Laravel auth routes use a different prefix.
   static const String loginPath = 'api/signin';
   static const String registerPath = 'api/register';
+  static const String updateProfilePath = 'api/update/photo';
   static const String forgotPasswordPath = 'api/forgot-password';
   static const String logoutPath = 'api/logout';
 
@@ -50,6 +51,7 @@ class AppConstants {
   static const Color text = Color(0xFF101828);
   static const Color muted = Color(0xFF667085);
   static const Color border = Color(0xFFE4E7EC);
+  static const Color warning = Color.fromARGB(0, 255, 161, 47);
 
   static const double pagePadding = 18;
   static const double radius = 18;

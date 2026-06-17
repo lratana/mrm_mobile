@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../controllers/booking_controller.dart';
 import '../models/room_model.dart';
 import '../utils/app_palette.dart';
@@ -101,7 +100,6 @@ class AvailableRoomScreen extends StatelessWidget {
                     itemCount: rooms.length,
                     itemBuilder: (context, index) {
                       final Room room = rooms[index];
-
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
                         child: FeaturedRoomListCard(

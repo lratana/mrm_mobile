@@ -26,8 +26,6 @@ class CheckNetwork extends ChangeNotifier {
       _isOnline = false;
       _initialized = true;
       notifyListeners();
-
-      debugPrint('Network initialization error: $e');
     }
   }
 
@@ -39,8 +37,6 @@ class CheckNetwork extends ChangeNotifier {
       _isOnline = false;
       _initialized = true;
       notifyListeners();
-
-      debugPrint('Network check error: $e');
     }
 
     return _isOnline;

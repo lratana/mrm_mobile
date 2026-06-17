@@ -30,25 +30,22 @@ class _ExtraTimeSheet extends StatelessWidget {
   const _ExtraTimeSheet({required this.booking});
 
   String _formatTime(BuildContext context, DateTime dateTime) {
+    final localDateTime = dateTime;
+
     return MaterialLocalizations.of(context).formatTimeOfDay(
-      TimeOfDay.fromDateTime(dateTime),
+      TimeOfDay.fromDateTime(localDateTime),
       alwaysUse24HourFormat: false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentEnd = booking.endDatetime;
+    final currentEndUtc = booking.endDatetime;
 
-    final localCurrentEnd = currentEnd != null
-        ? DateTimeHelper.toLocal(currentEnd)
-        : null;
+    final currentEndText = currentEndUtc == null
+        ? 'Current ending time unavailable'
+        : 'Currently ends at ${_formatTime(context, currentEndUtc)}';
 
-    final newEnd = currentEnd != null
-        ? currentEnd.add(const Duration(hours: 1))
-        : null;
-
-    final localNewEnd = newEnd != null ? DateTimeHelper.toLocal(newEnd) : null;
     return SafeArea(
       child: Container(
         margin: const EdgeInsets.all(12),
@@ -79,7 +76,9 @@ class _ExtraTimeSheet extends StatelessWidget {
                 ),
               ),
             ),
+
             const SizedBox(height: 19),
+
             Row(
               children: [
                 Container(
@@ -96,7 +95,9 @@ class _ExtraTimeSheet extends StatelessWidget {
                     color: AppConstants.primary,
                   ),
                 ),
+
                 const SizedBox(width: 13),
+
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,7 +110,9 @@ class _ExtraTimeSheet extends StatelessWidget {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
+
                       const SizedBox(height: 3),
+
                       Text(
                         'Continue your current meeting',
                         style: context.appText.bodySmall?.copyWith(
@@ -123,7 +126,9 @@ class _ExtraTimeSheet extends StatelessWidget {
                 ),
               ],
             ),
+
             const SizedBox(height: 18),
+
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(13),
@@ -138,12 +143,12 @@ class _ExtraTimeSheet extends StatelessWidget {
                     size: 20,
                     color: context.appColors.textMuted,
                   ),
+
                   const SizedBox(width: 9),
+
                   Expanded(
                     child: Text(
-                      currentEnd == null
-                          ? 'Current ending time unavailable'
-                          : 'Currently ends at ${_formatTime(context, localNewEnd ?? localCurrentEnd!)}',
+                      currentEndText,
                       style: context.appText.bodyMedium?.copyWith(
                         color: context.appColors.text,
                         fontSize: 13,
@@ -154,7 +159,9 @@ class _ExtraTimeSheet extends StatelessWidget {
                 ],
               ),
             ),
+
             const SizedBox(height: 17),
+
             Text(
               'Select additional hours',
               style: context.appText.bodyMedium?.copyWith(
@@ -163,23 +170,31 @@ class _ExtraTimeSheet extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
+
             const SizedBox(height: 11),
+
             Row(
               children: [
                 Expanded(
-                  child: _ExtraTimeOption(hours: 1, currentEnd: currentEnd),
+                  child: _ExtraTimeOption(hours: 1, currentEnd: currentEndUtc),
                 ),
+
                 const SizedBox(width: 9),
+
                 Expanded(
-                  child: _ExtraTimeOption(hours: 2, currentEnd: currentEnd),
+                  child: _ExtraTimeOption(hours: 2, currentEnd: currentEndUtc),
                 ),
+
                 const SizedBox(width: 9),
+
                 Expanded(
-                  child: _ExtraTimeOption(hours: 3, currentEnd: currentEnd),
+                  child: _ExtraTimeOption(hours: 3, currentEnd: currentEndUtc),
                 ),
               ],
             ),
+
             const SizedBox(height: 15),
+
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -188,7 +203,9 @@ class _ExtraTimeSheet extends StatelessWidget {
                   color: context.appColors.textMuted,
                   size: 17,
                 ),
+
                 const SizedBox(width: 7),
+
                 Expanded(
                   child: Text(
                     'Extra time is added immediately when the room remains available.',
@@ -202,7 +219,9 @@ class _ExtraTimeSheet extends StatelessWidget {
                 ),
               ],
             ),
+
             const SizedBox(height: 13),
+
             SizedBox(
               width: double.infinity,
               child: TextButton(
@@ -236,45 +255,60 @@ class _ExtraTimeOption extends StatelessWidget {
   const _ExtraTimeOption({required this.hours, required this.currentEnd});
 
   String _formatTime(BuildContext context, DateTime dateTime) {
+    final localDateTime = dateTime;
+
     return MaterialLocalizations.of(context).formatTimeOfDay(
-      TimeOfDay.fromDateTime(dateTime),
+      TimeOfDay.fromDateTime(localDateTime),
       alwaysUse24HourFormat: false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final newEnd = currentEnd?.add(Duration(hours: hours));
+    // ✅ currentEnd should be UTC from backend/model
+    final DateTime? newEndUtc = currentEnd?.add(Duration(hours: hours));
 
-    final localNewEnd = newEnd != null ? DateTimeHelper.toLocal(newEnd) : null;
+    final bool disabled = newEndUtc == null;
 
     return Material(
-      color: context.appColors.primarySoft,
+      color: disabled
+          ? context.appColors.surfaceSoft
+          : context.appColors.primarySoft,
       borderRadius: BorderRadius.circular(15),
       child: InkWell(
         borderRadius: BorderRadius.circular(15),
-        onTap: () {
-          Navigator.pop(context, hours);
-        },
+        onTap: disabled
+            ? null
+            : () {
+                Navigator.pop(context, hours);
+              },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 13),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: AppConstants.primary.withOpacity(0.14)),
+            border: Border.all(
+              color: disabled
+                  ? context.appColors.border
+                  : AppConstants.primary.withOpacity(0.14),
+            ),
           ),
           child: Column(
             children: [
               Text(
                 '+$hours hr',
                 style: context.appText.titleMedium?.copyWith(
-                  color: AppConstants.primary,
+                  color: disabled
+                      ? context.appColors.textMuted
+                      : AppConstants.primary,
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
                 ),
               ),
+
               const SizedBox(height: 5),
+
               Text(
-                newEnd == null ? '' : _formatTime(context, localNewEnd!),
+                disabled ? '--:--' : _formatTime(context, newEndUtc),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: context.appText.bodySmall?.copyWith(
@@ -370,18 +404,35 @@ class _BookingScreenState extends State<BookingScreen> {
     final endRaw = booking.endDatetime;
 
     if (!allowedRole) return false;
-    if (status != 'in_meeting') return false;
     if (startRaw == null || endRaw == null) return false;
 
-    // ✅ Convert EVERYTHING using DateTimeHelper (single source of truth)
-    final localStart = DateTimeHelper.toLocal(startRaw);
-    final localEnd = DateTimeHelper.toLocal(endRaw);
-    final now = DateTimeHelper.toLocal(DateTime.now());
+    // ✅ Allow approved OR in_meeting if current time is inside meeting time
+    if (status != 'approved' && status != 'in_meeting') {
+      return false;
+    }
+
+    // ✅ Safe even if model already converted to UTC
+    final startUtc = DateTimeHelper.asDate(startRaw);
+    final endUtc = DateTimeHelper.asDate(endRaw);
+    final nowUtc = DateTime.now().toUtc();
 
     final hasStarted =
-        now.isAfter(localStart) || now.isAtSameMomentAs(localStart);
+        nowUtc.isAfter(startUtc!) || nowUtc.isAtSameMomentAs(startUtc);
 
-    final notEnded = now.isBefore(localEnd);
+    final notEnded = nowUtc.isBefore(endUtc!);
+
+    debugPrint('========== CAN ADD EXTRA TIME ==========');
+    debugPrint('bookingId: ${booking.bookingId}');
+    debugPrint('status: $status');
+    debugPrint('startRaw isUtc: ${startRaw.isUtc}');
+    debugPrint('endRaw isUtc: ${endRaw.isUtc}');
+    debugPrint('startUtc: $startUtc');
+    debugPrint('endUtc: $endUtc');
+    debugPrint('nowUtc: $nowUtc');
+    debugPrint('hasStarted: $hasStarted');
+    debugPrint('notEnded: $notEnded');
+    debugPrint('canAdd: ${hasStarted && notEnded}');
+    debugPrint('========================================');
 
     return hasStarted && notEnded;
   }
@@ -922,6 +973,14 @@ class _BookingScreenState extends State<BookingScreen> {
                 itemCount: sortedBookings.length,
                 itemBuilder: (context, index) {
                   final booking = sortedBookings[index];
+
+                  debugPrint(
+                    "booking time UTC => start: ${booking.startDatetime?.toUtc()}, end: ${booking.endDatetime?.toUtc()}",
+                  );
+
+                  debugPrint(
+                    "booking time LOCAL => start: ${booking.startDatetime?.toLocal()}, end: ${booking.endDatetime?.toLocal()}",
+                  );
 
                   final allowedRole = isUser || isAdmin;
 

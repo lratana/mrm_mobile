@@ -278,7 +278,7 @@ class _RoomScreenState extends State<RoomScreen> {
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final room = rooms[index];
-
+              debugPrint("Room:${room.status}");
               return FeaturedSpaceCard(
                 room: room,
                 onTap: () {
@@ -497,6 +497,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final phoneController = TextEditingController();
@@ -504,10 +506,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? imageUrl;
   File? pickedImage;
 
+  bool _isPickingImage = false;
+
   @override
   void initState() {
     super.initState();
+    _loadCurrentUser();
+  }
 
+  void _loadCurrentUser() {
     final user = context.read<AuthController>().user;
 
     try {
@@ -522,9 +529,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         imageUrl =
             json['photo']?.toString() ??
             json['profile_image']?.toString() ??
-            json['avatar']?.toString();
+            json['avatar']?.toString() ??
+            json['image']?.toString();
       }
-    } catch (_) {}
+    } catch (_) {
+      nameController.clear();
+      emailController.clear();
+      phoneController.clear();
+      imageUrl = null;
+    }
   }
 
   @override
@@ -535,35 +548,93 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  bool _isPickingImage = false;
-
-  Future<void> _pickImage() async {
-    if (_isPickingImage) return;
-    _isPickingImage = true;
-
-    try {
-      final ImageSource? source = await showModalBottomSheet<ImageSource>(
-        context: context,
-        builder: (context) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+  void _showMessage({required String message, required bool success}) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          backgroundColor: success
+              ? Colors.green.shade700
+              : Colors.red.shade700,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          content: Row(
             children: [
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Gallery'),
-                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              Icon(
+                success
+                    ? Icons.check_circle_rounded
+                    : Icons.error_outline_rounded,
+                color: Colors.white,
+                size: 20,
               ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Camera'),
-                onTap: () => Navigator.pop(context, ImageSource.camera),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
         ),
       );
+  }
 
-      if (source == null) return; // user canceled
+  Future<void> _pickImage() async {
+    if (_isPickingImage) return;
+
+    _isPickingImage = true;
+
+    try {
+      final ImageSource? source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: context.appColors.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        builder: (context) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: const Icon(
+                      Icons.photo_library_rounded,
+                      color: AppConstants.primary,
+                    ),
+                    title: const Text(
+                      'Choose from Gallery',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    onTap: () => Navigator.pop(context, ImageSource.gallery),
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.camera_alt_rounded,
+                      color: AppConstants.primary,
+                    ),
+                    title: const Text(
+                      'Take Photo',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    onTap: () => Navigator.pop(context, ImageSource.camera),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      if (source == null) return;
 
       final picked = await ImagePicker().pickImage(
         source: source,
@@ -571,15 +642,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         maxWidth: 1200,
       );
 
-      if (picked != null && mounted) {
-        setState(() {
-          pickedImage = File(picked.path);
-        });
-      }
+      if (picked == null) return;
+      if (!mounted) return;
+
+      setState(() {
+        pickedImage = File(picked.path);
+      });
     } catch (e) {
-      debugPrint('Image pick error: $e');
+      if (!mounted) return;
+
+      _showMessage(message: 'Image pick error: $e', success: false);
     } finally {
-      if (mounted) _isPickingImage = false;
+      _isPickingImage = false;
     }
   }
 
@@ -588,56 +662,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return FileImage(pickedImage!);
     }
 
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
-      return NetworkImage(imageUrl!);
+    final url = imageUrl?.trim();
+
+    if (url != null && url.isNotEmpty) {
+      return NetworkImage(url);
     }
 
     return null;
   }
 
   Future<void> _saveProfile() async {
-    final name = nameController.text.trim();
-    final email = emailController.text.trim();
-    final phone = phoneController.text.trim();
+    final auth = context.read<AuthController>();
 
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please enter name')));
-      return;
-    }
+    if (auth.loading) return;
 
-    if (email.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please enter email')));
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    final ok = await context.read<AuthController>().updateProfile(
-      name: name,
-      email: email,
-      phoneNumber: phone,
+    FocusScope.of(context).unfocus();
+
+    final ok = await auth.updateProfile(
+      name: nameController.text.trim(),
+      email: emailController.text.trim(),
+      phoneNumber: phoneController.text.trim(),
       imagePath: pickedImage?.path,
     );
 
     if (!mounted) return;
 
-    final controller = context.read<AuthController>();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ok
-              ? 'Profile updated successfully'
-              : controller.error ?? 'Failed to update profile',
-        ),
-      ),
-    );
-
     if (ok) {
+      _showMessage(
+        message: auth.successMessage ?? 'Profile updated successfully.',
+        success: true,
+      );
+
+      setState(() {
+        pickedImage = null;
+      });
+
+      await Future.delayed(const Duration(milliseconds: 600));
+
+      if (!mounted) return;
+
       Navigator.pop(context);
+    } else {
+      _showMessage(
+        message: auth.error ?? 'Failed to update profile.',
+        success: false,
+      );
     }
+  }
+
+  Future<void> _logout() async {
+    final auth = context.read<AuthController>();
+
+    if (auth.loading) return;
+
+    await auth.logout();
+
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
   }
 
   @override
@@ -648,149 +736,203 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: context.appColors.background,
       appBar: AppBar(
+        backgroundColor: context.appColors.background,
+        foregroundColor: context.appColors.text,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: Text(
           'Profile',
           style: context.appText.titleLarge?.copyWith(
+            color: context.appColors.text,
             fontWeight: FontWeight.w900,
           ),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppConstants.pagePadding),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: context.appColors.surface,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: context.appColors.border),
-            ),
-            child: Column(
-              children: [
-                Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 54,
-                      backgroundColor: context.appColors.primarySoft,
-                      backgroundImage: imageProvider,
-                      child: imageProvider == null
-                          ? const Icon(
-                              Icons.person,
-                              color: AppConstants.primary,
-                              size: 58,
-                            )
-                          : null,
-                    ),
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: InkWell(
-                        onTap: _pickImage,
-                        borderRadius: BorderRadius.circular(999),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: AppConstants.primary,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: context.appColors.surface,
-                              width: 3,
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.all(AppConstants.pagePadding),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: context.appColors.surface,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: context.appColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: context.appColors.shadow,
+                    blurRadius: 16,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 54,
+                        backgroundColor: context.appColors.primarySoft,
+                        backgroundImage: imageProvider,
+                        child: imageProvider == null
+                            ? const Icon(
+                                Icons.person,
+                                color: AppConstants.primary,
+                                size: 58,
+                              )
+                            : null,
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Material(
+                          color: AppConstants.primary,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            onTap: auth.loading ? null : _pickImage,
+                            customBorder: const CircleBorder(),
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: context.appColors.surface,
+                                  width: 3,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                             ),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 18,
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                _ProfileInput(
-                  controller: nameController,
-                  label: 'Name',
-                  icon: Icons.person_outline,
-                ),
-
-                const SizedBox(height: 14),
-
-                _ProfileInput(
-                  controller: emailController,
-                  label: 'Email',
-                  icon: Icons.email_outlined,
-                  keyboardType: TextInputType.emailAddress,
-                ),
-
-                const SizedBox(height: 14),
-
-                _ProfileInput(
-                  controller: phoneController,
-                  label: 'Phone Number',
-                  icon: Icons.phone_outlined,
-                  keyboardType: TextInputType.phone,
-                ),
-
-                const SizedBox(height: 24),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    onPressed: auth.loading ? null : _saveProfile,
-                    icon: auth.loading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.save_outlined, color: Colors.white),
-                    label: const Text('Update Profile'),
+                    ],
                   ),
-                ),
 
-                const SizedBox(height: 14),
+                  const SizedBox(height: 24),
 
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    onPressed: auth.loading
-                        ? null
-                        : () async {
-                            await context.read<AuthController>().logout();
+                  _ProfileInput(
+                    controller: nameController,
+                    label: 'Name',
+                    icon: Icons.person_outline_rounded,
+                    validator: (value) {
+                      final text = value?.trim() ?? '';
 
-                            if (!context.mounted) return;
+                      if (text.isEmpty) {
+                        return 'Please enter name';
+                      }
 
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const LoginScreen(),
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  _ProfileInput(
+                    controller: emailController,
+                    label: 'Email',
+                    icon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      final text = value?.trim() ?? '';
+
+                      if (text.isEmpty) {
+                        return 'Please enter email';
+                      }
+
+                      if (!text.contains('@')) {
+                        return 'Please enter valid email';
+                      }
+
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  _ProfileInput(
+                    controller: phoneController,
+                    label: 'Phone Number',
+                    icon: Icons.phone_outlined,
+                    keyboardType: TextInputType.phone,
+                    validator: (value) {
+                      final text = value?.trim() ?? '';
+
+                      if (text.isEmpty) {
+                        return 'Please enter phone number';
+                      }
+
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: auth.loading ? null : _saveProfile,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppConstants.primary,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: context.appColors.surfaceSoft,
+                        disabledForegroundColor: context.appColors.textMuted,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: auth.loading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
                               ),
-                              (_) => false,
-                            );
-                          },
-                    icon: const Icon(Icons.logout, color: Colors.white),
-                    label: const Text(
-                      'Logout',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: context.appColors.danger,
+                            )
+                          : const Icon(Icons.save_outlined),
+                      label: const Text(
+                        'Update Profile',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 14),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: auth.loading ? null : _logout,
+                      icon: const Icon(Icons.logout_rounded),
+                      label: const Text(
+                        'Logout',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: context.appColors.danger,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -801,23 +943,54 @@ class _ProfileInput extends StatelessWidget {
   final String label;
   final IconData icon;
   final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
 
   const _ProfileInput({
     required this.controller,
     required this.label,
     required this.icon,
     this.keyboardType,
+    this.validator,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      style: context.appText.bodyMedium,
+      validator: validator,
+      style: context.appText.bodyMedium?.copyWith(
+        color: context.appColors.text,
+      ),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppConstants.primary),
+        filled: true,
+        fillColor: context.appColors.surfaceSoft,
+        labelStyle: context.appText.bodyMedium?.copyWith(
+          color: context.appColors.textMuted,
+          fontWeight: FontWeight.w700,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: context.appColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: context.appColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppConstants.primary, width: 1.4),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: context.appColors.danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: context.appColors.danger, width: 1.4),
+        ),
       ),
     );
   }

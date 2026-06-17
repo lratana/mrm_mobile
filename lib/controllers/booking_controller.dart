@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_application_1/utils/date_time_helper.dart';
 import '../models/booking_model.dart';
 import '../models/room_model.dart';
 import '../services/booking_service.dart';
@@ -272,6 +273,7 @@ class BookingController extends ChangeNotifier {
     error = null;
 
     try {
+      // ✅ FIX 1: normalize to UTC before sending
       final result = await _service.availability(
         roomId: roomId,
         start: start,
@@ -279,10 +281,16 @@ class BookingController extends ChangeNotifier {
         ignoreId: ignoreId,
       );
 
-      return result['available'] == true ||
-          result['available'] == 1 ||
-          result['available'] == '1' ||
-          result['available']?.toString().toLowerCase() == 'true';
+      // ✅ FIX 2: strict boolean parsing (clean API contract)
+      final available = result['available'];
+
+      if (available is bool) return available;
+      if (available is int) return available == 1;
+      if (available is String) {
+        return available.toLowerCase() == 'true' || available == '1';
+      }
+
+      return false;
     } catch (e) {
       error = _cleanError(e);
       notifyListeners();

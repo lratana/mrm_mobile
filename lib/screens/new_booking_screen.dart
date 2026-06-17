@@ -119,12 +119,9 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
 
     final booking = widget.booking;
 
-    final start =
-        booking?.startDatetime?.toLocal() ??
-        widget.initialStartDateTime?.toLocal();
+    final start = booking?.startDatetime ?? widget.initialStartDateTime;
 
-    final end =
-        booking?.endDatetime?.toLocal() ?? widget.initialEndDateTime?.toLocal();
+    final end = booking?.endDatetime ?? widget.initialEndDateTime;
 
     if (start != null) {
       selectedDate = DateTime(start.year, start.month, start.day);
@@ -210,7 +207,7 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
       selectedDate.day,
       time.hour,
       time.minute,
-    ).toLocal(); // ensure local time
+    );
     return DateFormat('hh:mm a').format(date);
   }
 

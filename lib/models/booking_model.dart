@@ -1,3 +1,5 @@
+import 'package:flutter_application_1/utils/date_time_helper.dart';
+
 import 'room_model.dart';
 
 int _asInt(dynamic value, {int fallback = 0}) {
@@ -15,13 +17,30 @@ bool _asBool(dynamic value) {
 
 DateTime? _asDate(dynamic value) {
   if (value == null) return null;
+
   final raw = value.toString().trim();
+
   if (raw.isEmpty) return null;
-  if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(raw)) {
-    return DateTime.tryParse(raw);
+
+  try {
+    // Check if backend already sends timezone:
+    // 2026-06-17T09:01:00Z
+    // 2026-06-17T09:01:00+00:00
+    final hasTimezone = RegExp(r'(Z|[+-]\d{2}:?\d{2})$').hasMatch(raw);
+
+    final normalized = raw.replaceFirst(' ', 'T');
+
+    if (hasTimezone) {
+      return DateTime.parse(normalized).toUtc();
+    }
+
+    // ✅ Backend sends UTC but without Z:
+    // 2026-06-17 09:01:00
+    // Treat it as UTC, not local.
+    return DateTime.parse('${normalized}Z').toUtc();
+  } catch (_) {
+    return null;
   }
-  final normalized = raw.replaceFirst(' ', 'T');
-  return DateTime.tryParse(normalized);
 }
 
 String _asString(dynamic value, {String fallback = ''}) {
@@ -180,14 +199,32 @@ class Booking {
   Map<String, dynamic> toPayload() {
     return {
       'room_id': roomId,
-      'start_datetime': startDatetime?.toIso8601String(),
-      'end_datetime': endDatetime?.toIso8601String(),
-      'actual_start_datetime': actualStartDatetime?.toIso8601String(),
-      'actual_end_datetime': actualEndDatetime?.toIso8601String(),
+
+      // 🔥 USE DateTimeHelper
+      'start_datetime': startDatetime == null
+          ? null
+          : DateTimeHelper.toLocal(startDatetime!).toIso8601String(),
+
+      'end_datetime': endDatetime == null
+          ? null
+          : DateTimeHelper.toLocal(endDatetime!).toIso8601String(),
+
+      'actual_start_datetime': actualStartDatetime == null
+          ? null
+          : DateTimeHelper.toLocal(actualStartDatetime!).toIso8601String(),
+
+      'actual_end_datetime': actualEndDatetime == null
+          ? null
+          : DateTimeHelper.toLocal(actualEndDatetime!).toIso8601String(),
+
       'recurrence_type': recurrenceType,
       'recurrence_days': recurrenceDays,
       'recurrence_period': recurrencePeriod,
-      'recurrence_until': recurrenceUntil?.toIso8601String(),
+
+      'recurrence_until': recurrenceUntil == null
+          ? null
+          : DateTimeHelper.toLocal(recurrenceUntil!).toIso8601String(),
+
       'meeting_title': meetingTitle,
       'meeting_chairman': meetingChairman,
       'snack_required': snackRequired,
@@ -197,8 +234,14 @@ class Booking {
       'status': status,
       'cancel_reason': cancelReason,
       'reject_reason': rejectReason,
-      'created_at': createdAt?.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
+
+      'created_at': createdAt == null
+          ? null
+          : DateTimeHelper.toLocal(createdAt!).toIso8601String(),
+
+      'updated_at': updatedAt == null
+          ? null
+          : DateTimeHelper.toLocal(updatedAt!).toIso8601String(),
     };
   }
 }

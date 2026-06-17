@@ -1,7 +1,6 @@
 import '../models/user_model.dart';
 import '../utils/constants.dart';
 import 'api_service.dart';
-import 'api_service.dart';
 
 class AuthResult {
   final String token;
@@ -93,24 +92,22 @@ class AuthService {
     String? imagePath,
   }) async {
     final response = await _api.multipartPost(
-      'api/profile/update',
+      AppConstants.updateProfilePath,
       fields: {
-        'name': name,
-        'full_name': name,
-        'email': email,
-        'phone_number': phoneNumber,
-        '_method': 'PUT',
+        'name': name.trim(),
+        'email': email.trim(),
+        'phone': email.trim(),
+        'password': phoneNumber.trim(),
       },
-      files: (imagePath == null || imagePath.isEmpty)
+      files: imagePath == null || imagePath.isEmpty
           ? null
-          : {'image': imagePath},
+          : {'photo': imagePath},
     );
 
     final map = _asMap(response);
+    final userMap = _extractUserMap(map);
 
-    final user = _extractUserMap(map);
-
-    return _safeUser(user);
+    return _safeUser(userMap);
   }
 
   // ---------------------------

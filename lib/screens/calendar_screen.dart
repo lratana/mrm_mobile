@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/available_room_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -782,6 +783,31 @@ class _IOSDayView extends StatelessWidget {
                   titleBuilder: titleBuilder,
                   timeBuilder: timeBuilder,
                   colorBuilder: colorBuilder,
+                  onLongPressHour: (hour) {
+                    final day = selectedDay;
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AvailableRoomScreen(
+                          startDateTime: DateTime(
+                            day.year,
+                            day.month,
+                            day.day,
+                            hour,
+                          ),
+                          endDateTime: DateTime(
+                            day.year,
+                            day.month,
+                            day.day,
+                            hour + 1,
+                          ),
+                          participants: 1,
+                          equipment: "any",
+                        ),
+                      ),
+                    );
+                  },
                 );
               }).toList(),
             ),
@@ -797,13 +823,14 @@ class _DayHourRow extends StatelessWidget {
   final String Function(Booking booking) titleBuilder;
   final String Function(Booking booking) timeBuilder;
   final Color Function(String status) colorBuilder;
-
+  final void Function(int hour)? onLongPressHour;
   const _DayHourRow({
     required this.hour,
     required this.events,
     required this.titleBuilder,
     required this.timeBuilder,
     required this.colorBuilder,
+    this.onLongPressHour,
   });
 
   String _hourLabel(int value) {
@@ -816,80 +843,90 @@ class _DayHourRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 58),
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: context.appColors.border)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 68,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 12, right: 8),
-              child: Text(
-                _hourLabel(hour),
-                textAlign: TextAlign.right,
-                style: context.appText.bodySmall?.copyWith(
-                  color: context.appColors.textMuted,
-                  fontWeight: FontWeight.w800,
+    return Material(
+      child: InkWell(
+        onLongPress: () {
+          if (onLongPressHour != null) {
+            onLongPressHour!(hour);
+          }
+        },
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 58),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: context.appColors.border)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 68,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 12, right: 8),
+                  child: Text(
+                    _hourLabel(hour),
+                    textAlign: TextAlign.right,
+                    style: context.appText.bodySmall?.copyWith(
+                      color: context.appColors.textMuted,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(0, 8, 12, 8),
-              child: events.isEmpty
-                  ? const SizedBox(height: 32)
-                  : Column(
-                      children: events.map((booking) {
-                        final color = colorBuilder(booking.status);
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 8, 12, 8),
+                  child: events.isEmpty
+                      ? const SizedBox(height: 32)
+                      : Column(
+                          children: events.map((booking) {
+                            final color = colorBuilder(booking.status);
 
-                        return Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 6),
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(
-                              context.isDarkMode ? 0.18 : 0.12,
-                            ),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border(
-                              left: BorderSide(color: color, width: 4),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                timeBuilder(booking),
-                                style: context.appText.bodySmall?.copyWith(
-                                  color: color,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 12,
+                            return Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(
+                                  context.isDarkMode ? 0.18 : 0.12,
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border(
+                                  left: BorderSide(color: color, width: 4),
                                 ),
                               ),
-                              const SizedBox(height: 3),
-                              Text(
-                                titleBuilder(booking),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: context.appText.titleMedium?.copyWith(
-                                  color: context.appColors.text,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    timeBuilder(booking),
+                                    style: context.appText.bodySmall?.copyWith(
+                                      color: color,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    titleBuilder(booking),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: context.appText.titleMedium
+                                        ?.copyWith(
+                                          color: context.appColors.text,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 15,
+                                        ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-            ),
+                            );
+                          }).toList(),
+                        ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
