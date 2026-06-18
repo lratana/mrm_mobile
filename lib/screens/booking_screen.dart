@@ -333,7 +333,8 @@ class _BookingScreenState extends State<BookingScreen> {
   bool _showBackHomeFab = true;
 
   List<Booking> _filterBookingsByTab(List<Booking> bookings) {
-    final nowUtc = DateTimeHelper.asDate(DateTime.now());
+    // Business comparison should always use UTC.
+    final nowUtc = DateTime.now().toUtc();
 
     return bookings.where((booking) {
       final status = booking.status.toLowerCase().trim();
@@ -343,15 +344,21 @@ class _BookingScreenState extends State<BookingScreen> {
           : DateTimeHelper.asDate(booking.endDatetime);
 
       final isCancelled = status == 'cancelled' || status == 'rejected';
+
+      // Only completed status means explicitly completed.
       final isCompleted = status == 'completed';
 
-      final isPastByTime = endUtc != null && !endUtc.isAfter(nowUtc!);
+      // A booking is past when its end time has already reached/passed now.
+      final isPastByTime = endUtc != null && !endUtc.isAfter(nowUtc);
 
       switch (selectedTab) {
         case BookingFilterTab.upcoming:
+          // Includes pending, approved, in_meeting, cancel_requested
+          // as long as the meeting is not ended/cancelled.
           return !isCancelled && !isCompleted && !isPastByTime;
 
         case BookingFilterTab.past:
+          // Includes completed bookings OR bookings whose end time passed.
           return !isCancelled && (isCompleted || isPastByTime);
 
         case BookingFilterTab.cancelled:

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AppConstants {
   // AppConstants._();
 
-  static const bool isProduction = false;
+  static const bool isProduction = true;
 
   static const String baseUrl = isProduction
       ? 'https://starlink98.cloud'
