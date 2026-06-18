@@ -314,7 +314,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 28),
 
-                    const OrDivider(text: 'OR Log In'),
+                    const OrDivider(text: 'OR Sign In'),
 
                     const SizedBox(height: 62),
 
@@ -332,7 +332,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           GestureDetector(
                             onTap: auth.loading ? null : _goToLogin,
                             child: const Text(
-                              'Log In',
+                              'Sign In',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: AppConstants.primary,

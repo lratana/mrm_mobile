@@ -59,7 +59,7 @@ class AuthService {
         'name': name.trim(),
         'full_name': name.trim(),
         'email': email.trim(),
-        'phone_number': phoneNumber.trim(),
+        'phone': phoneNumber.trim(),
         'password': password,
         'password_confirmation': password,
       },

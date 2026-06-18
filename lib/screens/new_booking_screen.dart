@@ -34,10 +34,10 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = const TimeOfDay(hour: 11, minute: 0);
   int durationHours = 2;
-
   bool snackRequired = false;
   bool technicianRequired = false;
-
+  DateTime? _lockedStartDateTime;
+  DateTime? _lockedEndDateTime;
   String selectedTimeOption = 'custom';
 
   String recurrenceType = 'none';
@@ -119,22 +119,35 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
 
     final booking = widget.booking;
 
-    final start = booking?.startDatetime ?? widget.initialStartDateTime;
+    final rawStart = booking?.startDatetime ?? widget.initialStartDateTime;
+    final rawEnd = booking?.endDatetime ?? widget.initialEndDateTime;
 
-    final end = booking?.endDatetime ?? widget.initialEndDateTime;
+    final start = rawStart?.toLocal();
+    final end = rawEnd?.toLocal();
+
+    // ✅ Coming from Select Room: keep exact start/end
+    if (!widget.isEdit && start != null && end != null) {
+      _lockedStartDateTime = start;
+      _lockedEndDateTime = end;
+    }
 
     if (start != null) {
       selectedDate = DateTime(start.year, start.month, start.day);
       selectedTime = TimeOfDay(hour: start.hour, minute: start.minute);
     }
 
-    if (start != null && end != null) {
+    // ✅ Only calculate duration for normal manual booking/edit display
+    if (start != null && end != null && _lockedEndDateTime == null) {
       final duration = end.difference(start);
 
       durationHours = duration.inMinutes ~/ 60;
 
       if (duration.inMinutes % 60 != 0) {
         durationHours += 1;
+      }
+
+      if (durationHours < 1) {
+        durationHours = 1;
       }
     }
 
@@ -177,6 +190,10 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
   }
 
   DateTime get _startDateTime {
+    if (_lockedStartDateTime != null) {
+      return _lockedStartDateTime!;
+    }
+
     return DateTime(
       selectedDate.year,
       selectedDate.month,
@@ -187,13 +204,17 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
   }
 
   DateTime get _endDateTime {
+    if (_lockedEndDateTime != null) {
+      return _lockedEndDateTime!;
+    }
+
     return _startDateTime.add(Duration(hours: durationHours));
   }
 
   bool get _scheduleLocked {
     return !widget.isEdit &&
-        widget.initialStartDateTime != null &&
-        widget.initialEndDateTime != null;
+        _lockedStartDateTime != null &&
+        _lockedEndDateTime != null;
   }
 
   String _apiDate(DateTime date) {
@@ -325,8 +346,8 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
 
     final payload = <String, dynamic>{
       'room_id': widget.room.id,
-      'start_datetime': _apiDate(_startDateTime),
-      'end_datetime': _apiDate(_endDateTime),
+      'start_datetime': _startDateTime,
+      'end_datetime': _endDateTime,
       'recurrence_type': recurrenceType,
       if (recurrenceType == 'weekly')
         'recurrence_days': <String>[
@@ -402,7 +423,11 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          widget.isEdit ? 'Update Booking' : 'New Booking',
+          widget.isEdit
+              ? 'Update Booking'
+              : _scheduleLocked
+              ? 'Confirm Booking'
+              : 'New Booking',
           style: context.appText.titleLarge?.copyWith(
             color: context.appColors.text,
             fontWeight: FontWeight.w900,
@@ -670,9 +695,14 @@ class _LockedScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateText = DateFormat('EEEE, dd MMM yyyy').format(startDateTime);
-    final startText = DateFormat('hh:mm a').format(startDateTime);
-    final endText = DateFormat('hh:mm a').format(endDateTime);
+    // ✅ Display local time to user
+    final startLocal = startDateTime.toLocal();
+    final endLocal = endDateTime.toLocal();
+
+    final startText = DateFormat(
+      'EEEE, dd MMM yyyy • hh:mm a',
+    ).format(startLocal);
+    final endText = DateFormat('EEEE, dd MMM yyyy • hh:mm a').format(endLocal);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -709,17 +739,17 @@ class _LockedScheduleCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           _LockedScheduleRow(
-            icon: Icons.calendar_month_rounded,
-            label: 'Date',
-            value: dateText,
+            icon: Icons.play_circle_outline_rounded,
+            label: 'Start',
+            value: startText,
           ),
 
           const SizedBox(height: 10),
 
           _LockedScheduleRow(
-            icon: Icons.access_time_rounded,
-            label: 'Time',
-            value: '$startText - $endText',
+            icon: Icons.stop_circle_outlined,
+            label: 'End',
+            value: endText,
           ),
         ],
       ),

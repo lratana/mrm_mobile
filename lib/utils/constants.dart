@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AppConstants {
   // AppConstants._();
 
-  static const bool isProduction = false;
+  static const bool isProduction = true;
 
   static const String baseUrl = isProduction
       ? 'https://starlink98.cloud'
@@ -31,7 +31,7 @@ class AppConstants {
 
   // Auth endpoints. Change these if your Laravel auth routes use a different prefix.
   static const String loginPath = 'api/signin';
-  static const String registerPath = 'api/register';
+  static const String registerPath = 'api/signup';
   static const String updateProfilePath = 'api/update/photo';
   static const String forgotPasswordPath = 'api/forgot-password';
   static const String logoutPath = 'api/logout';

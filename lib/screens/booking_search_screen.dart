@@ -208,7 +208,7 @@ class _BookingSearchScreenState extends State<BookingSearchScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'New Booking',
+          'Available Rooms',
           style: context.appText.titleLarge?.copyWith(
             color: context.appColors.text,
             fontWeight: FontWeight.w900,
@@ -242,7 +242,7 @@ class _BookingSearchScreenState extends State<BookingSearchScreen> {
                     children: [
                       Expanded(
                         child: _DateTimeBox(
-                          label: 'Start Date',
+                          label: 'Start Date *',
                           value: _formatDate(selectedStartDate),
                           icon: Icons.calendar_today_rounded,
                           onTap: () => _pickDate(isStart: true),
@@ -251,7 +251,7 @@ class _BookingSearchScreenState extends State<BookingSearchScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _DateTimeBox(
-                          label: 'End Date',
+                          label: 'End Date *',
                           value: _formatDate(selectedEndDate),
                           icon: Icons.event_rounded,
                           onTap: () => _pickDate(isStart: false),
@@ -266,7 +266,7 @@ class _BookingSearchScreenState extends State<BookingSearchScreen> {
                     children: [
                       Expanded(
                         child: _DateTimeBox(
-                          label: 'Start Time',
+                          label: 'Start Time *',
                           value: _formatTime(selectedStartTime),
                           icon: Icons.access_time_rounded,
                           onTap: () => _pickTime(isStart: true),
@@ -275,7 +275,7 @@ class _BookingSearchScreenState extends State<BookingSearchScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _DateTimeBox(
-                          label: 'End Time',
+                          label: 'End Time *',
                           value: _formatTime(selectedEndTime),
                           icon: Icons.timelapse_rounded,
                           onTap: () => _pickTime(isStart: false),
@@ -289,7 +289,7 @@ class _BookingSearchScreenState extends State<BookingSearchScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Quick duration',
+                      'Quick duration *',
                       style: context.appText.bodyMedium?.copyWith(
                         color: context.appColors.text,
                         fontWeight: FontWeight.w900,
@@ -330,7 +330,7 @@ class _BookingSearchScreenState extends State<BookingSearchScreen> {
 
             _StepCard(
               step: '02',
-              title: 'Participants',
+              title: 'Participants *',
               subtitle: 'How many people will join?',
               icon: Icons.groups_rounded,
               child: Column(
@@ -398,7 +398,7 @@ class _BookingSearchScreenState extends State<BookingSearchScreen> {
 
             _StepCard(
               step: '03',
-              title: 'Equipment',
+              title: 'Equipment *',
               subtitle: 'Choose required room facilities',
               icon: Icons.devices_other_rounded,
               child: _EquipmentChipList(

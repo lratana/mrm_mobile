@@ -246,7 +246,7 @@ class _RoomScreenState extends State<RoomScreen> {
         ),
         sliver: SliverToBoxAdapter(
           child: Text(
-            'Featured Spaces',
+            'Available Meeting Rooms',
             style: context.appText.headlineSmall?.copyWith(
               color: context.appColors.text,
               fontWeight: FontWeight.w900,

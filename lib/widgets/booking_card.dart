@@ -39,13 +39,13 @@ class BookingCard extends StatelessWidget {
         return context.appColors.warning;
       case 'rejected':
       case 'cancelled':
-        return context.appColors.danger;
+        return context.appColors.text;
       case 'cancel_requested':
         return context.appColors.warning;
       case 'completed':
         return AppConstants.primary;
       default:
-        return const Color.fromARGB(255, 255, 100, 86);
+        return context.appColors.danger;
     }
   }
 
@@ -172,7 +172,7 @@ class BookingCard extends StatelessWidget {
                 const SizedBox(height: 11),
                 _InformationRow(
                   icon: Icons.person_outline_rounded,
-                  text: 'Chairman: ${booking.meetingChairman}',
+                  text: 'Meeting Chair: ${booking.meetingChairman}',
                 ),
               ],
 

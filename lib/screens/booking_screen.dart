@@ -30,7 +30,7 @@ class _ExtraTimeSheet extends StatelessWidget {
   const _ExtraTimeSheet({required this.booking});
 
   String _formatTime(BuildContext context, DateTime dateTime) {
-    final localDateTime = dateTime;
+    final localDateTime = dateTime.toLocal();
 
     return MaterialLocalizations.of(context).formatTimeOfDay(
       TimeOfDay.fromDateTime(localDateTime),
@@ -255,7 +255,7 @@ class _ExtraTimeOption extends StatelessWidget {
   const _ExtraTimeOption({required this.hours, required this.currentEnd});
 
   String _formatTime(BuildContext context, DateTime dateTime) {
-    final localDateTime = dateTime;
+    final localDateTime = dateTime.toLocal();
 
     return MaterialLocalizations.of(context).formatTimeOfDay(
       TimeOfDay.fromDateTime(localDateTime),

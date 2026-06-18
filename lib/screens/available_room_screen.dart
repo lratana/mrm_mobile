@@ -68,7 +68,7 @@ class AvailableRoomScreen extends StatelessWidget {
         backgroundColor: context.appColors.background,
         elevation: 0,
         title: Text(
-          'Select Room',
+          'Select Available Room',
           style: context.appText.titleLarge?.copyWith(
             color: AppConstants.primary,
             fontWeight: FontWeight.w900,
