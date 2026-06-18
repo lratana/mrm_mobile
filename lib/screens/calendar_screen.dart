@@ -84,9 +84,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     for (final entry in controller.events.entries) {
       for (final booking in entry.value) {
-        final start = booking.startDatetime;
+        final startLocal = booking.startDatetime?.toLocal();
 
-        if (start != null && _isSameDay(start, day)) {
+        if (startLocal != null && _isSameDay(startLocal, day)) {
           count++;
         }
       }
@@ -100,19 +100,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     for (final entry in controller.events.entries) {
       for (final booking in entry.value) {
-        final start = booking.startDatetime;
+        final startLocal = booking.startDatetime?.toLocal();
 
-        if (start != null && _isSameDay(start, day)) {
+        if (startLocal != null && _isSameDay(startLocal, day)) {
           events.add(booking);
         }
       }
     }
 
-    events.sort(
-      (a, b) => (a.startDatetime ?? DateTime(1900)).compareTo(
-        b.startDatetime ?? DateTime(1900),
-      ),
-    );
+    events.sort((a, b) {
+      final aStart = a.startDatetime?.toLocal() ?? DateTime(1900);
+      final bStart = b.startDatetime?.toLocal() ?? DateTime(1900);
+
+      return aStart.compareTo(bStart);
+    });
 
     return events;
   }
@@ -188,17 +189,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   String _bookingTime(Booking booking) {
-    final start = booking.startDatetime;
-    final end = booking.endDatetime;
+    // Calendar is UI display layer:
+    // show backend UTC DateTime in the device's local time.
+    final start = booking.startDatetime?.toLocal();
+    final end = booking.endDatetime?.toLocal();
 
+    debugPrint('Calendar UTC start: ${booking.startDatetime}');
+    debugPrint('Calendar Local start: ${booking.startDatetime?.toLocal()}');
+    debugPrint('Calendar UTC end: ${booking.endDatetime}');
+    debugPrint('Calendar Local end: ${booking.endDatetime?.toLocal()}');
     if (start == null) return '-';
 
+    final formatter = DateFormat('h:mm a');
+
     if (end == null) {
-      return DateFormat('hh:mm a').format(start);
+      return formatter.format(start);
     }
 
-    return '${DateFormat('hh:mm a').format(start)} - '
-        '${DateFormat('hh:mm a').format(end)}';
+    return '${formatter.format(start)} - ${formatter.format(end)}';
   }
 
   @override
@@ -772,9 +780,11 @@ class _IOSDayView extends StatelessWidget {
             Column(
               children: hours.map((hour) {
                 final hourEvents = events.where((booking) {
-                  final start = booking.startDatetime;
+                  final startLocal = booking.startDatetime?.toLocal();
 
-                  return start != null && start.hour == hour;
+                  // Example:
+                  // 11:40 AM booking → shown under 11 AM row
+                  return startLocal != null && startLocal.hour == hour;
                 }).toList();
 
                 return _DayHourRow(
