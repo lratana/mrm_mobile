@@ -337,6 +337,32 @@ class BookingController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Map<String, dynamic>? analyticsReport;
+  bool analyticsLoading = false;
+  String? analyticsError;
+
+  Future<bool> fetchBookingReport({
+    required String type,
+    DateTime? selectedDate,
+  }) async {
+    analyticsLoading = true;
+    analyticsError = null;
+    notifyListeners();
+    try {
+      analyticsReport = await _service.fetchBookingReport(
+        type: type,
+        selectedDate: selectedDate,
+      );
+      return true;
+    } catch (e) {
+      analyticsError = _cleanError(e);
+      return false;
+    } finally {
+      analyticsLoading = false;
+      notifyListeners();
+    }
+  }
+
   // List<Booking> _demoBookings() {
   //   final now = DateTime.now();
 

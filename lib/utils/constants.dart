@@ -59,6 +59,9 @@ class AppConstants {
   static const String createPasswordPath = 'api/password/create';
   static const String updateProfilePath = 'api/update/photo';
 
+  //report api
+  static const String bookingReportsPath = 'api/booking-reports';
+
   static const String loginHeroAsset = 'assets/images/login_hero.jpg';
   static const String appLogoAsset = 'assets/images/logos.png';
   static const String resetHeroAsset = 'assets/images/reset_hero.jpg';

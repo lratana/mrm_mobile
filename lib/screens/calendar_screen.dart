@@ -194,11 +194,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (start == null) return '-';
 
     if (end == null) {
-      return DateFormat('hh:mm a').format(start.toLocal());
+      return DateFormat('hh:mm a').format(start);
     }
 
-    return '${DateFormat('hh:mm a').format(start.toLocal())} - '
-        '${DateFormat('hh:mm a').format(end.toLocal())}';
+    return '${DateFormat('hh:mm a').format(start)} - '
+        '${DateFormat('hh:mm a').format(end)}';
   }
 
   @override

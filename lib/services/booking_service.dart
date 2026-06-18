@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_application_1/utils/constants.dart';
 import 'package:flutter_application_1/utils/date_time_helper.dart';
 import 'package:intl/intl.dart';
 
@@ -391,5 +392,37 @@ class BookingService {
 
   Future<void> deleteBooking(int id) async {
     await _api.delete('api/bookings/delete/$id');
+  }
+
+  Future<Map<String, dynamic>> fetchBookingReport({
+    required String type,
+    DateTime? selectedDate,
+  }) async {
+    final date = selectedDate ?? DateTime.now();
+    final query = <String, dynamic>{
+      'type': type,
+    }; // No DateTime timezone conversion here.
+    // Only send date parts to backend.
+    switch (type) {
+      case 'daily':
+      case 'weekly':
+        query['date'] = DateFormat('yyyy-MM-dd').format(date);
+        break;
+      case 'monthly':
+        query['month'] = date.month;
+        query['year'] = date.year;
+        break;
+      case 'yearly':
+        query['year'] = date.year;
+        break;
+    }
+    final response = await _api.get(
+      AppConstants.bookingReportsPath,
+      query: query,
+    );
+    if (response is Map) {
+      return Map<String, dynamic>.from(response);
+    }
+    throw Exception('Invalid analytics response.');
   }
 }

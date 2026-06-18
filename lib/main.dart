@@ -10,7 +10,6 @@ import 'controllers/display_settings_controller.dart';
 import 'controllers/notification_controller.dart';
 import 'controllers/room_controller.dart';
 import 'controllers/theme_controller.dart';
-import 'screens/auth_gate.dart';
 import 'services/check_network.dart';
 
 void main() {

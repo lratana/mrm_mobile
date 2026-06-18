@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/controllers/notification_controller.dart';
+import 'package:flutter_application_1/screens/analytics_screen.dart';
 import 'package:flutter_application_1/screens/booking_screen.dart';
 import 'package:flutter_application_1/screens/booking_search_screen.dart';
 import 'package:flutter_application_1/screens/calendar_screen.dart';
 import 'package:flutter_application_1/screens/notification_screen.dart';
+import 'package:flutter_application_1/screens/room_details_screen.dart';
 import 'package:flutter_application_1/screens/settings_screen.dart';
 import 'package:flutter_application_1/utils/app_palette.dart';
 import 'package:flutter_application_1/utils/app_shimmer.dart';
@@ -282,7 +284,12 @@ class _RoomScreenState extends State<RoomScreen> {
               return FeaturedSpaceCard(
                 room: room,
                 onTap: () {
-                  //onTap
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RoomDetailsScreen(room: room),
+                    ),
+                  );
                 },
               );
             }, childCount: rooms.length),
@@ -1298,7 +1305,7 @@ class _HomeShortcutGrid extends StatelessWidget {
                   icon: Icons.analytics_outlined,
                   label: 'Analytics',
                   onTap: () {
-                    _openPage(context, const HelpScreen());
+                    _openPage(context, const AnalyticsScreen());
                   },
                 ),
               ),
