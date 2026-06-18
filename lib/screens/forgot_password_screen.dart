@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/set_new_password_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
@@ -24,13 +25,58 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
+  Future<void> _showResetLinkSentDialog(String email) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.mark_email_read_rounded, color: AppConstants.primary),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Reset Link Sent',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'We sent a password reset link to:\n\n$email\n\nPlease open your Gmail and tap the reset link. After verification, you will be redirected to set a new password.',
+            style: const TextStyle(height: 1.45, fontWeight: FontWeight.w600),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'OK',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: AppConstants.primary,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _sendLink() async {
     if (!_formKey.currentState!.validate()) return;
 
+    FocusScope.of(context).unfocus();
+
     final auth = context.read<AuthController>();
+    final email = _emailController.text.trim();
 
-    final ok = await auth.forgotPassword(_emailController.text.trim());
-
+    final ok = await auth.forgotPassword(email);
+    debugPrint("ok:==============${ok}");
     if (!mounted) return;
 
     ScaffoldMessenger.of(context)
@@ -54,8 +100,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               Expanded(
                 child: Text(
                   ok
-                      ? auth.successMessage ?? 'Reset link sent successfully'
-                      : auth.error ?? 'Failed to send reset link',
+                      ? auth.successMessage ?? 'Reset link sent to your email.'
+                      : auth.error ?? 'Failed to send reset link.',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -66,6 +112,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
         ),
       );
+
+    if (ok) {
+      await _showResetLinkSentDialog(email);
+    }
   }
 
   void _backToLogin() {

@@ -1295,8 +1295,8 @@ class _HomeShortcutGrid extends StatelessWidget {
               _VerticalDividerLine(),
               Expanded(
                 child: _ShortcutTile(
-                  icon: Icons.support_agent_rounded,
-                  label: 'Help Desk',
+                  icon: Icons.analytics_outlined,
+                  label: 'Analytics',
                   onTap: () {
                     _openPage(context, const HelpScreen());
                   },

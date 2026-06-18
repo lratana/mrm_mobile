@@ -127,14 +127,6 @@ class BookingCard extends StatelessWidget {
         final compact = constraints.maxWidth < 360;
         final veryCompact = constraints.maxWidth < 315;
 
-        debugPrint(
-          start == null
-              ? 'No schedule'
-              : end == null
-              ? '${dateFormat.format(start)} • ${timeFormat.format(start)}'
-              : '${dateFormat.format(end)} • ${dateFormat.format(end)} '
-                    '${timeFormat.format(start)} - ${timeFormat.format(end)}',
-        );
         return Container(
           width: double.infinity,
           margin: const EdgeInsets.only(bottom: 14),
@@ -455,7 +447,7 @@ class SchedulePanel extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppConstants.chipBg,
+              color: AppConstants.bg,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(

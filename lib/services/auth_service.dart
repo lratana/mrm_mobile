@@ -119,9 +119,34 @@ class AuthService {
       body: {'email': email.trim()},
     );
 
-    final map = _asMap(response);
+    if (response is Map && response['message'] != null) {
+      return response['message'].toString();
+    }
 
-    return map['message']?.toString() ?? 'Password reset link sent';
+    return 'Password reset link sent to your email.';
+  }
+
+  Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final response = await _api.post(
+      AppConstants.resetPasswordPath,
+      body: {
+        'email': email.trim(),
+        'token': token,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
+
+    if (response is Map) {
+      return Map<String, dynamic>.from(response);
+    }
+
+    return <String, dynamic>{};
   }
 
   // ---------------------------

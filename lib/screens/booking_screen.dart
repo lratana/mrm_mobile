@@ -17,6 +17,8 @@ import '../widgets/booking_card.dart';
 
 enum BookingSortType { newest, oldest, status, roomName }
 
+enum BookingFilterTab { upcoming, past, cancelled }
+
 class BookingScreen extends StatefulWidget {
   const BookingScreen({super.key});
 
@@ -327,7 +329,36 @@ class _ExtraTimeOption extends StatelessWidget {
 
 class _BookingScreenState extends State<BookingScreen> {
   BookingSortType sortType = BookingSortType.newest;
+  BookingFilterTab selectedTab = BookingFilterTab.upcoming;
   bool _showBackHomeFab = true;
+
+  List<Booking> _filterBookingsByTab(List<Booking> bookings) {
+    final nowUtc = DateTimeHelper.asDate(DateTime.now());
+
+    return bookings.where((booking) {
+      final status = booking.status.toLowerCase().trim();
+
+      final endUtc = booking.endDatetime == null
+          ? null
+          : DateTimeHelper.asDate(booking.endDatetime);
+
+      final isCancelled = status == 'cancelled' || status == 'rejected';
+      final isCompleted = status == 'completed';
+
+      final isPastByTime = endUtc != null && !endUtc.isAfter(nowUtc!);
+
+      switch (selectedTab) {
+        case BookingFilterTab.upcoming:
+          return !isCancelled && !isCompleted && !isPastByTime;
+
+        case BookingFilterTab.past:
+          return !isCancelled && (isCompleted || isPastByTime);
+
+        case BookingFilterTab.cancelled:
+          return isCancelled;
+      }
+    }).toList();
+  }
 
   void _setBackHomeFabVisible(bool visible) {
     if (_showBackHomeFab == visible || !mounted) return;
@@ -893,134 +924,163 @@ class _BookingScreenState extends State<BookingScreen> {
           ),
         ],
       ),
-      body: NotificationListener<UserScrollNotification>(
-        onNotification: (notification) {
-          if (notification.metrics.axis != Axis.vertical) {
-            return false;
-          }
-
-          if (notification.metrics.pixels <= 10) {
-            _setBackHomeFabVisible(true);
-            return false;
-          }
-
-          if (notification.direction == ScrollDirection.reverse) {
-            _setBackHomeFabVisible(false);
-          } else if (notification.direction == ScrollDirection.forward) {
-            _setBackHomeFabVisible(true);
-          }
-
-          return false;
-        },
-        child: Consumer<BookingController>(
-          builder: (context, controller, _) {
-            if (controller.loading && controller.bookings.isEmpty) {
-              return Padding(
-                padding: const EdgeInsets.all(AppConstants.pagePadding),
-                child: AppShimmerBox(height: 200),
-              );
-            }
-
-            if (controller.bookings.isEmpty) {
-              return RefreshIndicator(
-                color: AppConstants.primary,
-                onRefresh: controller.fetchBookings,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(AppConstants.pagePadding),
-                  children: [
-                    const SizedBox(height: 190),
-                    Icon(
-                      Icons.event_busy_outlined,
-                      size: 52,
-                      color: context.appColors.textMuted,
-                    ),
-                    const SizedBox(height: 14),
-                    Center(
-                      child: Text(
-                        'No bookings found',
-                        style: context.appText.titleMedium?.copyWith(
-                          color: context.appColors.textMuted,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            final sortedBookings = _sortBookings(
-              controller.bookings,
-              isAdmin,
-              isUser,
-              isStatus ? 'pending' : null,
-            );
-
-            return RefreshIndicator(
-              color: AppConstants.primary,
-              onRefresh: () async {
-                await controller.fetchBookings();
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppConstants.pagePadding,
+              12,
+              AppConstants.pagePadding,
+              12,
+            ),
+            child: _BookingTabSelector(
+              selectedTab: selectedTab,
+              onChanged: (tab) {
+                setState(() {
+                  selectedTab = tab;
+                });
               },
-              child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(
-                  AppConstants.pagePadding,
-                  8,
-                  AppConstants.pagePadding,
-                  24,
-                ),
-                itemCount: sortedBookings.length,
-                itemBuilder: (context, index) {
-                  final booking = sortedBookings[index];
+            ),
+          ),
+          Expanded(
+            child: NotificationListener<UserScrollNotification>(
+              onNotification: (notification) {
+                if (notification.metrics.axis != Axis.vertical) {
+                  return false;
+                }
 
-                  debugPrint(
-                    "booking time UTC => start: ${booking.startDatetime?.toUtc()}, end: ${booking.endDatetime?.toUtc()}",
+                if (notification.metrics.pixels <= 10) {
+                  _setBackHomeFabVisible(true);
+                  return false;
+                }
+
+                if (notification.direction == ScrollDirection.reverse) {
+                  _setBackHomeFabVisible(false);
+                } else if (notification.direction == ScrollDirection.forward) {
+                  _setBackHomeFabVisible(true);
+                }
+
+                return false;
+              },
+              child: Consumer<BookingController>(
+                builder: (context, controller, _) {
+                  if (controller.loading && controller.bookings.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(AppConstants.pagePadding),
+                      child: AppShimmerBox(height: 200),
+                    );
+                  }
+
+                  if (controller.bookings.isEmpty) {
+                    return RefreshIndicator(
+                      color: AppConstants.primary,
+                      onRefresh: controller.fetchBookings,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(AppConstants.pagePadding),
+                        children: [
+                          const SizedBox(height: 190),
+                          Icon(
+                            Icons.event_busy_outlined,
+                            size: 52,
+                            color: context.appColors.textMuted,
+                          ),
+                          const SizedBox(height: 14),
+                          Center(
+                            child: Text(
+                              'No bookings found',
+                              style: context.appText.titleMedium?.copyWith(
+                                color: context.appColors.textMuted,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final filteredBookings = _filterBookingsByTab(
+                    controller.bookings,
                   );
 
-                  debugPrint(
-                    "booking time LOCAL => start: ${booking.startDatetime?.toLocal()}, end: ${booking.endDatetime?.toLocal()}",
+                  final sortedBookings = _sortBookings(
+                    filteredBookings,
+                    isAdmin,
+                    isUser,
+                    isStatus ? 'pending' : null,
                   );
 
-                  final allowedRole = isUser || isAdmin;
+                  return RefreshIndicator(
+                    color: AppConstants.primary,
+                    onRefresh: () async {
+                      await controller.fetchBookings();
+                    },
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppConstants.pagePadding,
+                        8,
+                        AppConstants.pagePadding,
+                        24,
+                      ),
+                      itemCount: sortedBookings.length,
+                      itemBuilder: (context, index) {
+                        final booking = sortedBookings[index];
 
-                  final allowedByBooking = _canAddExtraTime(
-                    booking,
-                    allowedRole,
-                  );
+                        debugPrint(
+                          "booking time UTC => start: ${booking.startDatetime?.toUtc()}, end: ${booking.endDatetime?.toUtc()}",
+                        );
 
-                  final canExtend = !controller.submitting && allowedByBooking;
+                        debugPrint(
+                          "booking time LOCAL => start: ${booking.startDatetime?.toLocal()}, end: ${booking.endDatetime?.toLocal()}",
+                        );
 
-                  return BookingCard(
-                    booking: booking,
-                    onExtend: canExtend
-                        ? () {
-                            _openAddExtraTime(context, booking);
-                          }
-                        : null,
-                    onUpdate: _canUpdate(booking, isAdmin, isUser)
-                        ? () => _openUpdateBooking(context, booking)
-                        : null,
-                    onDelete: _canDelete(booking, isUser)
-                        ? () => _deleteBooking(context, booking.bookingId)
-                        : null,
-                    onApprove: _canApprove(booking, isAdmin)
-                        ? () => _approveBooking(context, booking.bookingId)
-                        : null,
-                    onReject: _canReject(booking, isAdmin)
-                        ? () => _rejectBooking(context, booking.bookingId)
-                        : null,
-                    isAdmin: isAdmin,
-                    onShare: () => BookingExportService.shareSingleBooking(
-                      context: context,
-                      booking: booking,
+                        final allowedRole = isUser || isAdmin;
+
+                        final allowedByBooking = _canAddExtraTime(
+                          booking,
+                          allowedRole,
+                        );
+
+                        final canExtend =
+                            !controller.submitting && allowedByBooking;
+
+                        return BookingCard(
+                          booking: booking,
+                          onExtend: canExtend
+                              ? () {
+                                  _openAddExtraTime(context, booking);
+                                }
+                              : null,
+                          onUpdate: _canUpdate(booking, isAdmin, isUser)
+                              ? () => _openUpdateBooking(context, booking)
+                              : null,
+                          onDelete: _canDelete(booking, isUser)
+                              ? () => _deleteBooking(context, booking.bookingId)
+                              : null,
+                          onApprove: _canApprove(booking, isAdmin)
+                              ? () =>
+                                    _approveBooking(context, booking.bookingId)
+                              : null,
+                          onReject: _canReject(booking, isAdmin)
+                              ? () => _rejectBooking(context, booking.bookingId)
+                              : null,
+                          isAdmin: isAdmin,
+                          onShare: () =>
+                              BookingExportService.shareSingleBooking(
+                                context: context,
+                                booking: booking,
+                              ),
+                        );
+                      },
                     ),
                   );
                 },
               ),
-            );
-          },
-        ),
+            ),
+          ),
+        ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: AnimatedSlide(
@@ -1079,6 +1139,80 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _BookingTabSelector extends StatelessWidget {
+  final BookingFilterTab selectedTab;
+  final ValueChanged<BookingFilterTab> onChanged;
+
+  const _BookingTabSelector({
+    required this.selectedTab,
+    required this.onChanged,
+  });
+
+  String _label(BookingFilterTab tab) {
+    switch (tab) {
+      case BookingFilterTab.upcoming:
+        return 'Upcoming';
+      case BookingFilterTab.past:
+        return 'Past';
+      case BookingFilterTab.cancelled:
+        return 'Cancelled';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 58,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: BookingFilterTab.values.map((tab) {
+          final selected = selectedTab == tab;
+
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(tab),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? context.appColors.surface
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: selected
+                      ? [
+                          BoxShadow(
+                            color: context.appColors.shadow.withOpacity(0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Text(
+                  _label(tab),
+                  style: context.appText.titleMedium?.copyWith(
+                    color: selected
+                        ? AppConstants.primary
+                        : context.appColors.textMuted,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AppConstants {
   // AppConstants._();
 
-  static const bool isProduction = true;
+  static const bool isProduction = false;
 
   static const String baseUrl = isProduction
       ? 'https://starlink98.cloud'
@@ -30,11 +30,34 @@ class AppConstants {
   static const String authToken = '';
 
   // Auth endpoints. Change these if your Laravel auth routes use a different prefix.
+
+  // =========================
+  // Auth Public Routes
+  // =========================
   static const String loginPath = 'api/signin';
   static const String registerPath = 'api/signup';
+
+  static const String forgotPasswordPath = 'api/password/forgot';
+  static const String resetPasswordPath = 'api/password/reset';
+
+  static const String resendEmailVerificationPath = 'api/email/verify/resend';
+
+  // =========================
+  // Google OAuth Routes
+  // =========================
+  static const String googleAuthPath = 'api/auth/google';
+  static const String googleCallbackPath = 'api/auth/google/callback';
+
+  // =========================
+  // Protected Auth Routes
+  // Need Bearer Token
+  // =========================
+  static const String logoutPath = 'api/signout';
+  static const String refreshTokenPath = 'api/token/refresh';
+  static const String verifyAccountPath = 'api/verify/account';
+  static const String changePasswordPath = 'api/password/change';
+  static const String createPasswordPath = 'api/password/create';
   static const String updateProfilePath = 'api/update/photo';
-  static const String forgotPasswordPath = 'api/forgot-password';
-  static const String logoutPath = 'api/logout';
 
   static const String loginHeroAsset = 'assets/images/login_hero.jpg';
   static const String appLogoAsset = 'assets/images/logos.png';
