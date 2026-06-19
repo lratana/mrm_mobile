@@ -43,8 +43,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
 
     if (state == AppLifecycleState.resumed && mounted) {
-      debugPrint('App resumed: refreshing notifications');
-
       context.read<NotificationController>().fetchNotifications(
         silent: true,
         showAlertsForNewItems: true,

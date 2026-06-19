@@ -459,19 +459,6 @@ class _BookingScreenState extends State<BookingScreen> {
 
     final notEnded = nowUtc.isBefore(endUtc!);
 
-    debugPrint('========== CAN ADD EXTRA TIME ==========');
-    debugPrint('bookingId: ${booking.bookingId}');
-    debugPrint('status: $status');
-    debugPrint('startRaw isUtc: ${startRaw.isUtc}');
-    debugPrint('endRaw isUtc: ${endRaw.isUtc}');
-    debugPrint('startUtc: $startUtc');
-    debugPrint('endUtc: $endUtc');
-    debugPrint('nowUtc: $nowUtc');
-    debugPrint('hasStarted: $hasStarted');
-    debugPrint('notEnded: $notEnded');
-    debugPrint('canAdd: ${hasStarted && notEnded}');
-    debugPrint('========================================');
-
     return hasStarted && notEnded;
   }
 
@@ -1034,14 +1021,6 @@ class _BookingScreenState extends State<BookingScreen> {
                       itemCount: sortedBookings.length,
                       itemBuilder: (context, index) {
                         final booking = sortedBookings[index];
-
-                        debugPrint(
-                          "booking time UTC => start: ${booking.startDatetime?.toUtc()}, end: ${booking.endDatetime?.toUtc()}",
-                        );
-
-                        debugPrint(
-                          "booking time LOCAL => start: ${booking.startDatetime?.toLocal()}, end: ${booking.endDatetime?.toLocal()}",
-                        );
 
                         final allowedRole = isUser || isAdmin;
 

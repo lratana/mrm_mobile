@@ -366,8 +366,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
       'technician_note': technicianRequired ? technicianNote.text.trim() : null,
     };
 
-    debugPrint('BOOKING PAYLOAD: $payload');
-
     try {
       final controller = context.read<BookingController>();
 

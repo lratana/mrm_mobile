@@ -76,7 +76,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final email = _emailController.text.trim();
 
     final ok = await auth.forgotPassword(email);
-    debugPrint("ok:==============${ok}");
+
     if (!mounted) return;
 
     ScaffoldMessenger.of(context)

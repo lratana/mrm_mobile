@@ -194,10 +194,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final start = booking.startDatetime?.toLocal();
     final end = booking.endDatetime?.toLocal();
 
-    debugPrint('Calendar UTC start: ${booking.startDatetime}');
-    debugPrint('Calendar Local start: ${booking.startDatetime?.toLocal()}');
-    debugPrint('Calendar UTC end: ${booking.endDatetime}');
-    debugPrint('Calendar Local end: ${booking.endDatetime?.toLocal()}');
     if (start == null) return '-';
 
     final formatter = DateFormat('h:mm a');

@@ -94,9 +94,7 @@ class NotificationController extends ChangeNotifier {
 
     await _notificationPlugin.initialize(
       settings: initializationSettings,
-      onDidReceiveNotificationResponse: (response) {
-        debugPrint('Notification selected: ${response.payload}');
-      },
+      onDidReceiveNotificationResponse: (response) {},
     );
 
     if (Platform.isAndroid) {

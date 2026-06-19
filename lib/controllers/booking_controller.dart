@@ -320,7 +320,6 @@ class BookingController extends ChangeNotifier {
     } catch (e) {
       error = _cleanError(e);
       availableRooms = [];
-      debugPrint('FETCH AVAILABLE ROOMS ERROR: $e');
     } finally {
       loading = false;
       notifyListeners();

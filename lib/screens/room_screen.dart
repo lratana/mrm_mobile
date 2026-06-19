@@ -280,7 +280,7 @@ class _RoomScreenState extends State<RoomScreen> {
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final room = rooms[index];
-              debugPrint("Room:${room.status}");
+
               return FeaturedSpaceCard(
                 room: room,
                 onTap: () {
