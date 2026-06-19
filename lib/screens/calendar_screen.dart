@@ -165,10 +165,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     switch (status.toLowerCase().trim()) {
       case 'approved':
         return context.appColors.success;
+      case 'in_meeting':
+        return context.appColors.danger;
       case 'pending':
         return context.appColors.warning;
       case 'rejected':
-        return context.appColors.danger;
+        return context.appColors.text;
       case 'cancelled':
         return context.appColors.textMuted;
       case 'cancel_requested':

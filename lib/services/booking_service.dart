@@ -266,10 +266,11 @@ class BookingService {
     required DateTime start,
     required DateTime end,
   }) async {
-    final response = await _api.get(
-      'api/bookings/calendar',
-      query: {'start': apiDate(start), 'end': apiDate(end)},
-    );
+    final startValue = DateTimeHelper.toApiUtcString(start);
+    final endValue = DateTimeHelper.toApiUtcString(end);
+
+    final query = <String, dynamic>{'start': startValue, 'end': endValue};
+    final response = await _api.get('api/bookings/calendar', query: query);
 
     return _parseBookings(response);
   }

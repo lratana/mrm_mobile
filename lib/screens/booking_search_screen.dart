@@ -73,12 +73,36 @@ class _BookingSearchScreenState extends State<BookingSearchScreen> {
   TimeOfDay selectedEndTime = const TimeOfDay(hour: 11, minute: 0);
 
   List<String> selectedEquipment = ['Any'];
+
   String get selectedEquipmentText {
     if (selectedEquipment.isEmpty || selectedEquipment.contains('Any')) {
-      return 'Any';
+      return 'any';
     }
 
-    return selectedEquipment.join(', ');
+    return selectedEquipment.join(',');
+  }
+
+  void toggleEquipment(String equipment) {
+    setState(() {
+      if (equipment == 'Any') {
+        selectedEquipment = ['Any'];
+        return;
+      }
+
+      final updated = List<String>.from(selectedEquipment);
+
+      // If user selects real equipment, remove Any first.
+      updated.remove('Any');
+
+      if (updated.contains(equipment)) {
+        updated.remove(equipment);
+      } else {
+        updated.add(equipment);
+      }
+
+      // If nothing selected, fallback to Any.
+      selectedEquipment = updated.isEmpty ? ['Any'] : updated;
+    });
   }
 
   DateTime get startDateTime {
@@ -404,26 +428,7 @@ class _BookingSearchScreenState extends State<BookingSearchScreen> {
               child: _EquipmentChipList(
                 items: equipmentChipItems,
                 selectedValues: selectedEquipment,
-                onToggle: (value) {
-                  setState(() {
-                    if (value == 'Any') {
-                      selectedEquipment = ['Any'];
-                      return;
-                    }
-
-                    final updated = List<String>.from(selectedEquipment);
-
-                    updated.remove('Any');
-
-                    if (updated.contains(value)) {
-                      updated.remove(value);
-                    } else {
-                      updated.add(value);
-                    }
-
-                    selectedEquipment = updated.isEmpty ? ['Any'] : updated;
-                  });
-                },
+                onToggle: toggleEquipment,
               ),
             ),
           ],
