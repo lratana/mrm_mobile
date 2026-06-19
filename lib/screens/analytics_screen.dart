@@ -176,17 +176,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           ],
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: const Color(0xFFE6F2F2),
-              child: const Icon(
-                Icons.person_rounded,
-                color: AppConstants.primary,
-              ),
-            ),
-          ),
+          // Padding(
+          //   padding: const EdgeInsets.only(right: 16),
+          //   child: CircleAvatar(
+          //     radius: 18,
+          //     backgroundColor: const Color(0xFFE6F2F2),
+          //     child: const Icon(
+          //       Icons.person_rounded,
+          //       color: AppConstants.primary,
+          //     ),
+          //   ),
+          // ),
         ],
       ),
       body: Consumer<BookingController>(
