@@ -16,26 +16,42 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  bool _isFetching = false;
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addObserver(this);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchHomeData(silentNotification: true, showNotificationAlert: false);
+    });
+  }
 
+  Future<void> _fetchHomeData({
+    required bool silentNotification,
+    required bool showNotificationAlert,
+  }) async {
+    if (!mounted || _isFetching) return;
+
+    _isFetching = true;
+
+    try {
       await Future.wait([
         context.read<RoomController>().fetchRooms(),
         context.read<BookingController>().fetchBookings(),
         context.read<CalendarController>().fetchMonth(DateTime.now()),
-
         context.read<NotificationController>().fetchNotifications(
-          silent: true,
-          showAlertsForNewItems: false,
+          silent: silentNotification,
+          showAlertsForNewItems: showNotificationAlert,
         ),
       ]);
-    });
+    } catch (e) {
+      debugPrint('Home data fetch error: $e');
+    } finally {
+      _isFetching = false;
+    }
   }
 
   @override
@@ -43,10 +59,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
 
     if (state == AppLifecycleState.resumed && mounted) {
-      context.read<NotificationController>().fetchNotifications(
-        silent: true,
-        showAlertsForNewItems: true,
-      );
+      _fetchHomeData(silentNotification: true, showNotificationAlert: true);
     }
   }
 
