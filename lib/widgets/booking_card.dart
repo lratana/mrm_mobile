@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/utils/date_time_helper.dart';
 import 'package:flutter_application_1/widgets/base_network_image.dart';
 import 'package:flutter_application_1/widgets/booking_export_menu.dart';
+import 'package:flutter_application_1/widgets/modern_action_button.dart';
+import 'package:flutter_application_1/widgets/modern_action_dropdown_button.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -129,7 +131,14 @@ class BookingCard extends StatelessWidget {
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 360;
         final veryCompact = constraints.maxWidth < 315;
-
+        final actionCount = [
+          onShare,
+          onExtend,
+          onUpdate,
+          onApprove,
+          onReject,
+          onDelete,
+        ].where((action) => action != null).length;
         return Container(
           width: double.infinity,
           margin: const EdgeInsets.only(bottom: 14),
@@ -195,55 +204,69 @@ class BookingCard extends StatelessWidget {
                     children: [
                       if (onShare != null)
                         BookingExportMenu(bookings: [booking]),
-                      if (onExtend != null)
-                        _ModernActionButton(
-                          label: 'Extra Time',
-                          icon: Icons.more_time_rounded,
-                          color: AppConstants.primary,
+                      if (actionCount > 3)
+                        ModernActionDropdownButton(
+                          booking: booking,
                           compact: compact,
                           fullWidth: veryCompact,
-                          onTap: onExtend!,
-                        ),
 
-                      if (onUpdate != null)
-                        _ModernActionButton(
-                          label: 'Edit',
-                          icon: Icons.edit_rounded,
-                          color: context.appColors.warning,
-                          compact: compact,
-                          fullWidth: veryCompact,
-                          onTap: onUpdate!,
-                        ),
+                          onExtend: onExtend,
+                          onUpdate: onUpdate,
+                          onApprove: onApprove,
+                          onReject: onReject,
+                          onDelete: onDelete,
+                        )
+                      else ...[
+                        if (onExtend != null)
+                          ModernActionButton(
+                            label: 'Extra Time',
+                            icon: Icons.more_time_rounded,
+                            color: AppConstants.primary,
+                            compact: compact,
+                            fullWidth: veryCompact,
+                            onTap: onExtend!,
+                          ),
 
-                      if (onApprove != null)
-                        _ModernActionButton(
-                          label: 'Approve',
-                          icon: Icons.check_rounded,
-                          color: context.appColors.success,
-                          compact: compact,
-                          fullWidth: veryCompact,
-                          onTap: onApprove!,
-                        ),
+                        if (onUpdate != null)
+                          ModernActionButton(
+                            label: 'Edit',
+                            icon: Icons.edit_rounded,
+                            color: context.appColors.warning,
+                            compact: compact,
+                            fullWidth: veryCompact,
+                            onTap: onUpdate!,
+                          ),
 
-                      if (onReject != null)
-                        _ModernActionButton(
-                          label: 'Reject',
-                          icon: Icons.close_rounded,
-                          color: context.appColors.danger,
-                          compact: compact,
-                          fullWidth: veryCompact,
-                          onTap: onReject!,
-                        ),
+                        if (onApprove != null)
+                          ModernActionButton(
+                            label: 'Approve',
+                            icon: Icons.check_rounded,
+                            color: context.appColors.success,
+                            compact: compact,
+                            fullWidth: veryCompact,
+                            onTap: onApprove!,
+                          ),
 
-                      if (onDelete != null)
-                        _ModernActionButton(
-                          label: 'Delete',
-                          icon: Icons.delete_outline_rounded,
-                          color: context.appColors.danger,
-                          compact: compact,
-                          fullWidth: veryCompact,
-                          onTap: onDelete!,
-                        ),
+                        if (onReject != null)
+                          ModernActionButton(
+                            label: 'Reject',
+                            icon: Icons.close_rounded,
+                            color: context.appColors.danger,
+                            compact: compact,
+                            fullWidth: veryCompact,
+                            onTap: onReject!,
+                          ),
+
+                        if (onDelete != null)
+                          ModernActionButton(
+                            label: 'Delete',
+                            icon: Icons.delete_outline_rounded,
+                            color: context.appColors.danger,
+                            compact: compact,
+                            fullWidth: veryCompact,
+                            onTap: onDelete!,
+                          ),
+                      ],
                     ],
                   ),
                 ),
@@ -546,69 +569,5 @@ class _InformationRow extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-class _ModernActionButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final bool compact;
-  final bool fullWidth;
-  final VoidCallback onTap;
-
-  const _ModernActionButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.compact,
-    required this.fullWidth,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final button = Material(
-      color: color.withOpacity(context.isDarkMode ? 0.18 : 0.11),
-      borderRadius: BorderRadius.circular(13),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(13),
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 10 : 12,
-            vertical: 10,
-          ),
-          child: Row(
-            mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
-            mainAxisAlignment: fullWidth
-                ? MainAxisAlignment.center
-                : MainAxisAlignment.start,
-            children: [
-              Icon(icon, size: 17, color: color),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.appText.bodySmall?.copyWith(
-                    color: color,
-                    fontSize: compact ? 12 : 13,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (fullWidth) {
-      return SizedBox(width: double.infinity, child: button);
-    }
-
-    return button;
   }
 }

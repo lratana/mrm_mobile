@@ -474,9 +474,9 @@ class _BookingScreenState extends State<BookingScreen> {
     return hasStarted && notEnded;
   }
 
-  bool _canDelete(Booking booking, bool isUser) {
+  bool _canDelete(Booking booking, bool isUser, bool isAdmin) {
     final status = booking.status.toLowerCase().trim();
-    return isUser && status == 'pending';
+    return isUser && status == 'pending' || isAdmin && status == 'pending';
   }
 
   List<Booking> _sortBookings(
@@ -1054,7 +1054,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           onUpdate: _canUpdate(booking, isAdmin, isUser)
                               ? () => _openUpdateBooking(context, booking)
                               : null,
-                          onDelete: _canDelete(booking, isUser)
+                          onDelete: _canDelete(booking, isUser, isAdmin)
                               ? () => _deleteBooking(context, booking.bookingId)
                               : null,
                           onApprove: _canApprove(booking, isAdmin)
