@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/utils/app_palette.dart';
+import 'package:flutter_application_1/widgets/base_network_image.dart';
 
 import '../models/room_model.dart';
 import '../utils/constants.dart';
@@ -1143,13 +1144,21 @@ class _RoomThumbnail extends StatelessWidget {
     Widget image;
 
     if (imageUrl.startsWith('http')) {
-      image = Image.network(
-        imageUrl,
+      image = BaseNetworkImage(
+        imageUrl: imageUrl,
         width: 88,
         height: 100,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => placeholder,
+        errorWidget: placeholder,
       );
+      //disable
+      // Image.network(
+      //   imageUrl,
+      //   width: 88,
+      //   height: 100,
+      //   fit: BoxFit.cover,
+      //   errorBuilder: (_, __, ___) => placeholder,
+      // );
     } else if (imageUrl.startsWith('/')) {
       image = Image.file(
         File(imageUrl),

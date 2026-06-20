@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/utils/app_palette.dart';
+import 'package:flutter_application_1/widgets/base_network_image.dart';
 
 import '../models/room_model.dart';
 import '../utils/constants.dart';

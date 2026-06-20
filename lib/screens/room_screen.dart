@@ -1250,7 +1250,9 @@ class _HomeShortcutGrid extends StatelessWidget {
               _VerticalDividerLine(),
               Expanded(
                 child: _ShortcutTile(
-                  icon: Icons.notifications_active_outlined,
+                  icon: unreadCount == 0
+                      ? Icons.notifications_none_rounded
+                      : Icons.notifications_active_outlined,
                   label: 'Notifications',
                   badgeCount: unreadCount,
                   onTap: () {

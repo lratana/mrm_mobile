@@ -1,9 +1,12 @@
 import 'dart:math';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/utils/date_time_helper.dart';
+import 'package:flutter_application_1/widgets/base_network_image.dart';
 import 'package:flutter_application_1/widgets/booking_export_menu.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../models/booking_model.dart';
 import '../utils/app_palette.dart';
@@ -322,24 +325,31 @@ class _BookingHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = compact ? 42.0 : 46.0;
-
+    final imageRoom = booking.room!.imageUrl;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: context.appColors.primarySoft,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          alignment: Alignment.center,
-          child: const Icon(
-            Icons.meeting_room_rounded,
-            color: AppConstants.primary,
-            size: 24,
-          ),
-        ),
+        imageRoom.isEmpty
+            ? Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  color: context.appColors.primarySoft,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.meeting_room_rounded,
+                  color: AppConstants.primary,
+                  size: 24,
+                ),
+              )
+            : BaseNetworkImage(
+                imageUrl: imageRoom,
+                height: size,
+                width: size,
+                borderRadius: 10,
+              ),
 
         const SizedBox(width: 12),
 
