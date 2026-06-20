@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/widgets/base_network_image.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/booking_controller.dart';
@@ -735,13 +736,18 @@ class _TopRoomCard extends StatelessWidget {
                   height: 72,
                   child: imageUrl == null
                       ? const _RoomImagePlaceholder()
-                      : Image.network(
-                          imageUrl!,
+                      : BaseNetworkImage(
+                          imageUrl: imageUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) {
-                            return const _RoomImagePlaceholder();
-                          },
+                          errorWidget: _RoomImagePlaceholder(),
                         ),
+                  // Image.network(
+                  //     imageUrl!,
+                  //     fit: BoxFit.cover,
+                  //     errorBuilder: (_, __, ___) {
+                  //       return const _RoomImagePlaceholder();
+                  //     },
+                  //   ),
                 ),
               ),
               const SizedBox(width: 16),
