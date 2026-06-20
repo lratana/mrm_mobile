@@ -155,8 +155,9 @@ class NotificationScreen extends StatelessWidget {
                                 children: [
                                   NotificationCard(
                                     notification: notification,
-                                    onTap: () =>
-                                        _markAsRead(context, notification.id),
+                                    onTap: () => context
+                                        .read<NotificationController>()
+                                        .openNotification(notification),
                                     onDelete: () => _deleteNotification(
                                       context,
                                       notification.id,

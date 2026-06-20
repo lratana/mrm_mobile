@@ -26,31 +26,27 @@ class _AuthGateState extends State<AuthGate> {
   }) {
     if (_notificationSyncInProgress) return;
 
-    final shouldStart =
-        isAuthenticated && isOnline && !_notificationPollingRunning;
-
-    final shouldStop =
-        (!isAuthenticated || !isOnline) && _notificationPollingRunning;
-
-    if (!shouldStart && !shouldStop) return;
-
     _notificationSyncInProgress = true;
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         if (!mounted) return;
 
+        final auth = context.read<AuthController>();
+        final network = context.read<CheckNetwork>();
         final notificationController = context.read<NotificationController>();
 
-        if (shouldStart) {
-          /*
-            This initializes flutter_local_notifications and requests
-            Android 13+/iOS notification permission.
+        final latestAuthenticated = auth.isAuthenticated;
+        final latestOnline = network.isOnline;
 
-            Even if permission is denied, polling should still start so
-            your in-app NotificationScreen and bottom navigation count
-            continue to update.
-          */
+        final shouldStart =
+            latestAuthenticated && latestOnline && !_notificationPollingRunning;
+
+        final shouldStop =
+            (!latestAuthenticated || !latestOnline) &&
+            _notificationPollingRunning;
+
+        if (shouldStart) {
           await notificationController.requestNotificationPermission();
 
           if (!mounted) return;
@@ -58,10 +54,6 @@ class _AuthGateState extends State<AuthGate> {
           final currentAuth = context.read<AuthController>();
           final currentNetwork = context.read<CheckNetwork>();
 
-          /*
-            The user may log out or lose internet while the permission
-            dialog is open. Check the latest state before starting polling.
-          */
           if (currentAuth.isAuthenticated &&
               currentNetwork.isOnline &&
               !_notificationPollingRunning) {
@@ -70,15 +62,11 @@ class _AuthGateState extends State<AuthGate> {
           }
         }
 
-        if (shouldStop && _notificationPollingRunning) {
+        if (shouldStop) {
           notificationController.stopRealtimeNotifications();
           _notificationPollingRunning = false;
 
-          /*
-            Offline: keep the last loaded notification data and badge.
-            Logout: clear user-specific notification data and system badge.
-          */
-          if (!isAuthenticated) {
+          if (!latestAuthenticated) {
             await notificationController.clearNotifications();
           }
         }

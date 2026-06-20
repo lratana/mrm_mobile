@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/splash_screen.dart';
+import 'package:flutter_application_1/services/app_navigation.dart';
 import 'package:flutter_application_1/utils/app_theme.dart';
 import 'package:provider/provider.dart';
 
@@ -46,6 +47,7 @@ class RoomBookingApp extends StatelessWidget {
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
             themeMode: themeController.themeMode,
+            navigatorKey: AppNavigation.navigatorKey,
             builder: (context, child) {
               final mediaQuery = MediaQuery.of(context);
 

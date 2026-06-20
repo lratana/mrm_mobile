@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/booking_screen.dart';
+import 'package:flutter_application_1/services/app_navigation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../models/notification_model.dart';
@@ -68,6 +70,26 @@ class NotificationController extends ChangeNotifier {
     return _notificationPermissionGranted;
   }
 
+  void openNotification(AppNotification notification) {
+    final bookingId = _bookingIdFromNotification(notification);
+
+    if (notification.isUnread) {
+      unawaited(markAsRead(notification.id));
+    }
+
+    final navigator = AppNavigation.navigatorKey.currentState;
+
+    if (navigator == null) {
+      return;
+    }
+
+    navigator.push(
+      MaterialPageRoute(
+        builder: (_) => BookingScreen(initialBookingId: bookingId),
+      ),
+    );
+  }
+
   Future<void> initializeSystemNotifications() async {
     if (_pluginInitialized) return;
 
@@ -94,7 +116,9 @@ class NotificationController extends ChangeNotifier {
 
     await _notificationPlugin.initialize(
       settings: initializationSettings,
-      onDidReceiveNotificationResponse: (response) {},
+      onDidReceiveNotificationResponse: (response) {
+        _handleNotificationTap(response.payload);
+      },
     );
 
     if (Platform.isAndroid) {
@@ -128,6 +152,71 @@ class NotificationController extends ChangeNotifier {
     }
 
     _pluginInitialized = true;
+  }
+
+  int? _bookingIdFromPayload(String? payload) {
+    if (payload == null || payload.trim().isEmpty) {
+      return null;
+    }
+
+    final match = RegExp(r'booking[:=](\d+)').firstMatch(payload);
+
+    if (match == null) {
+      return null;
+    }
+
+    return int.tryParse(match.group(1) ?? '');
+  }
+
+  int? _bookingIdFromNotification(AppNotification notification) {
+    try {
+      final value = (notification as dynamic).bookingId;
+
+      if (value is int) return value;
+
+      return int.tryParse(value?.toString() ?? '');
+    } catch (_) {}
+
+    try {
+      final data = (notification as dynamic).data;
+
+      if (data is Map) {
+        final value =
+            data['booking_id'] ?? data['bookingId'] ?? data['booking'];
+
+        if (value is int) return value;
+
+        return int.tryParse(value?.toString() ?? '');
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  String _payloadForNotification(AppNotification notification) {
+    final bookingId = _bookingIdFromNotification(notification);
+
+    if (bookingId == null) {
+      return 'notification:${notification.id}';
+    }
+
+    return 'notification:${notification.id}|booking:$bookingId';
+  }
+
+  void _handleNotificationTap(String? payload) {
+    final bookingId = _bookingIdFromPayload(payload);
+
+    final navigator = AppNavigation.navigatorKey.currentState;
+
+    if (navigator == null) {
+      return;
+    }
+
+    navigator.push(
+      MaterialPageRoute(
+        builder: (_) => BookingScreen(initialBookingId: bookingId),
+      ),
+    );
   }
 
   Future<bool> requestNotificationPermission() async {
@@ -229,7 +318,8 @@ class NotificationController extends ChangeNotifier {
           ? 'You have a new notification.'
           : notification.message,
       notificationDetails: details,
-      payload: 'notification:${notification.id}',
+
+      payload: _payloadForNotification(notification),
     );
   }
 

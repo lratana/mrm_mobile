@@ -354,13 +354,21 @@ class _RoomImageCarousel extends StatelessWidget {
                 itemCount: imageUrls.length,
                 onPageChanged: onPageChanged,
                 itemBuilder: (context, index) {
-                  return Image.network(
-                    imageUrls[index],
+                  return BaseNetworkImage(
+                    imageUrl: imageUrls[index],
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) {
-                      return const _RoomImageFallback();
-                    },
+                    borderRadius: 0,
+                    width: 0,
+                    height: 0,
+                    errorWidget: _RoomImageFallback(),
                   );
+                  // Image.network(
+                  //   imageUrls[index],
+                  //   fit: BoxFit.cover,
+                  //   errorBuilder: (_, __, ___) {
+                  //     return const _RoomImageFallback();
+                  //   },
+                  // );
                 },
               ),
 

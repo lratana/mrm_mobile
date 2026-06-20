@@ -20,7 +20,8 @@ enum BookingSortType { newest, oldest, status, roomName }
 enum BookingFilterTab { upcoming, past, cancelled }
 
 class BookingScreen extends StatefulWidget {
-  const BookingScreen({super.key});
+  final int? initialBookingId;
+  const BookingScreen({super.key, this.initialBookingId});
 
   @override
   State<BookingScreen> createState() => _BookingScreenState();
@@ -331,6 +332,17 @@ class _BookingScreenState extends State<BookingScreen> {
   BookingSortType sortType = BookingSortType.newest;
   BookingFilterTab selectedTab = BookingFilterTab.upcoming;
   bool _showBackHomeFab = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      context.read<BookingController>().fetchBookings();
+    });
+  }
 
   List<Booking> _filterBookingsByTab(List<Booking> bookings) {
     // Business comparison should always use UTC.

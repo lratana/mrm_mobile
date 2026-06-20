@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/controllers/notification_controller.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/auth_controller.dart';
@@ -21,6 +22,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _hidePassword = true;
+
+  @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final notificationController = context.read<NotificationController>();
+      await notificationController.requestNotificationPermission();
+      if (!mounted) return;
+      notificationController.startRealtimeNotifications();
+    });
+    super.initState();
+  }
 
   @override
   void dispose() {

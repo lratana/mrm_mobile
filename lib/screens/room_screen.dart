@@ -519,6 +519,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadCurrentUser();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final notificationController = context.read<NotificationController>();
+      await notificationController.requestNotificationPermission();
+      if (!mounted) return;
+      notificationController.startRealtimeNotifications();
+    });
   }
 
   void _loadCurrentUser() {
@@ -721,9 +728,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _logout() async {
     final auth = context.read<AuthController>();
+    final notificationController = context.read<NotificationController>();
 
     if (auth.loading) return;
 
+    // Stop realtime notification polling before logout.
+    notificationController.stopRealtimeNotifications();
+
+    // Clear local notification list + badge.
+    await notificationController.clearNotifications();
+
+    // Logout user.
     await auth.logout();
 
     if (!mounted) return;

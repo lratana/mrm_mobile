@@ -15,17 +15,21 @@ class CheckNetwork extends ChangeNotifier {
   bool get initialized => _initialized;
 
   Future<void> initialize() async {
+    // Prevent duplicate listeners
+    await _subscription?.cancel();
+
     try {
       final results = await _connectivity.checkConnectivity();
       _updateConnection(results);
 
       _subscription = _connectivity.onConnectivityChanged.listen(
         _updateConnection,
+        onError: (_) {
+          _setOffline();
+        },
       );
-    } catch (e) {
-      _isOnline = false;
-      _initialized = true;
-      notifyListeners();
+    } catch (_) {
+      _setOffline();
     }
   }
 
@@ -33,10 +37,8 @@ class CheckNetwork extends ChangeNotifier {
     try {
       final results = await _connectivity.checkConnectivity();
       _updateConnection(results);
-    } catch (e) {
-      _isOnline = false;
-      _initialized = true;
-      notifyListeners();
+    } catch (_) {
+      _setOffline();
     }
 
     return _isOnline;
@@ -49,6 +51,17 @@ class CheckNetwork extends ChangeNotifier {
     final changed = !_initialized || _isOnline != online;
 
     _isOnline = online;
+    _initialized = true;
+
+    if (changed) {
+      notifyListeners();
+    }
+  }
+
+  void _setOffline() {
+    final changed = !_initialized || _isOnline != false;
+
+    _isOnline = false;
     _initialized = true;
 
     if (changed) {

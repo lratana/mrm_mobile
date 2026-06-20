@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/controllers/notification_controller.dart';
 import 'package:flutter_application_1/screens/auth_gate.dart';
+import 'package:provider/provider.dart';
+
 import '../utils/constants.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -37,6 +40,14 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     _goNext();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final notificationController = context.read<NotificationController>();
+      await notificationController.requestNotificationPermission();
+      if (!mounted) return;
+      notificationController.startRealtimeNotifications();
+    });
   }
 
   Future<void> _goNext() async {
