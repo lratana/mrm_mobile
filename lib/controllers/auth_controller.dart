@@ -54,6 +54,43 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateProfile({
+    required String name,
+    required String email,
+    required String phoneNumber,
+    String? imagePath,
+  }) async {
+    loading = true;
+    error = null;
+    successMessage = null;
+    notifyListeners();
+
+    try {
+      final updatedUser = await _service.updateProfile(
+        name: name,
+        email: email,
+        phoneNumber: phoneNumber,
+        imagePath: imagePath,
+      );
+
+      if (updatedUser != null) {
+        user = updatedUser;
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_user', jsonEncode(updatedUser.toJson()));
+      }
+
+      successMessage = 'Profile updated successfully.';
+      return true;
+    } catch (e) {
+      error = _cleanError(e);
+      return false;
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
   /// Login
   Future<bool> login(String email, String password) async {
     loading = true;
@@ -100,12 +137,12 @@ class AuthController extends ChangeNotifier {
         password: password,
       );
 
-      if (result != null && result.token.isNotEmpty) {
+      if (result.token.isNotEmpty) {
         await _saveSession(result.token, result.user);
       }
 
       successMessage =
-          result?.message ?? 'Account created successfully. Please sign in.';
+          result.message ?? 'Account created successfully. Please sign in.';
 
       return true;
     } catch (e) {
@@ -118,6 +155,7 @@ class AuthController extends ChangeNotifier {
   }
 
   /// Forgot password
+  /// Forgot password
   Future<bool> forgotPassword(String email) async {
     loading = true;
     error = null;
@@ -126,8 +164,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      successMessage = await _service.forgotPassword(email);
-
+      successMessage = await _service.forgotPassword(email.trim());
       return true;
     } catch (e) {
       error = _cleanError(e);
@@ -135,6 +172,41 @@ class AuthController extends ChangeNotifier {
     } finally {
       loading = false;
       notifyListeners();
+    }
+  }
+
+  Future<bool> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    loading = true;
+    error = null;
+    successMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _service.resetPassword(
+        email: email,
+        token: token,
+        password: password,
+        passwordConfirmation: passwordConfirmation,
+      );
+
+      successMessage =
+          response['message']?.toString() ?? 'Password reset successfully.';
+
+      loading = false;
+      notifyListeners();
+
+      return true;
+    } catch (e) {
+      error = e.toString();
+      loading = false;
+      notifyListeners();
+
+      return false;
     }
   }
 

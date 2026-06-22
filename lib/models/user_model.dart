@@ -4,6 +4,7 @@ class AppUser {
   final String email;
   final String? phoneNumber;
   final String? level;
+  final String? photo;
 
   const AppUser({
     this.id,
@@ -11,6 +12,7 @@ class AppUser {
     required this.email,
     this.phoneNumber,
     this.level,
+    this.photo,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,11 @@ class AppUser {
       email: _asString(json['email']) ?? '',
       phoneNumber: _asString(json['phone_number']) ?? _asString(json['phone']),
       level: _asString(json['level']) ?? _asString(json['role']),
+      photo:
+          _asString(json['photo']) ??
+          _asString(json['image']) ??
+          _asString(json['profile_image']) ??
+          _asString(json['avatar']),
     );
   }
 
@@ -28,8 +35,9 @@ class AppUser {
       'id': id,
       'name': name,
       'email': email,
-      'phone_number': phoneNumber,
+      'phone': phoneNumber,
       'level': level,
+      'photo': photo,
     };
   }
 }

@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_application_1/utils/constants.dart';
+import 'package:flutter_application_1/utils/date_time_helper.dart';
 import 'package:intl/intl.dart';
 
 import '../models/booking_model.dart';
@@ -6,10 +9,21 @@ import 'api_service.dart';
 
 class BookingService {
   final ApiService _api = ApiService.instance;
+
+  /// Current backend request format:
+  /// yyyy-MM-dd HH:mm:ss
+  ///
+  /// Important:
+  /// This sends local wall-clock time because the current backend appears
+  /// to convert Cambodia/local submitted times into UTC before returning them.
   final DateFormat _apiFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
 
   String apiDate(DateTime date) {
-    return _apiFormat.format(date);
+    final utc = date.toUtc();
+
+    final formatted = utc.toIso8601String();
+
+    return formatted;
   }
 
   List<Booking> _parseBookings(dynamic response) {
@@ -97,16 +111,82 @@ class BookingService {
     return Booking.fromJson(_parseObject(response));
   }
 
-  Future<Booking> createBooking(Map<String, dynamic> payload) async {
-    final response = await _api.post('api/bookings/create', body: payload);
+  Map<String, dynamic> _normalizeBookingPayload(Map<String, dynamic> payload) {
+    final fixedPayload = Map<String, dynamic>.from(payload);
 
-    return Booking.fromJson(_parseObject(response));
+    fixedPayload['start_datetime'] = _toApiUtcDateTime(
+      fixedPayload['start_datetime'],
+    );
+
+    fixedPayload['end_datetime'] = _toApiUtcDateTime(
+      fixedPayload['end_datetime'],
+    );
+
+    if (fixedPayload['actual_start_datetime'] != null) {
+      fixedPayload['actual_start_datetime'] = _toApiUtcDateTime(
+        fixedPayload['actual_start_datetime'],
+      );
+    }
+
+    return fixedPayload;
+  }
+
+  String _toApiUtcDateTime(dynamic value) {
+    if (value == null) return '';
+
+    // ✅ Best case: payload sends DateTime object
+    if (value is DateTime) {
+      return DateTimeHelper.toApiUtcString(value);
+    }
+
+    final raw = value.toString().trim();
+
+    if (raw.isEmpty) return '';
+
+    final hasTimezone = RegExp(r'(Z|[+-]\d{2}:?\d{2})$').hasMatch(raw);
+
+    // ✅ ISO string with timezone
+    // Example: 2026-06-17T06:38:00.000Z
+    // Example: 2026-06-17T13:38:00+07:00
+    if (hasTimezone) {
+      try {
+        return DateTimeHelper.toApiUtcString(DateTime.parse(raw));
+      } catch (_) {
+        return raw;
+      }
+    }
+
+    // ✅ Plain string from UI: 2026-06-17 13:38:00
+    // Treat it as LOCAL Cambodia/device time, then convert to UTC.
+    try {
+      final localDateTime = DateTime.parse(raw.replaceFirst(' ', 'T'));
+      return DateTimeHelper.toApiUtcString(localDateTime);
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  Future<Booking> createBooking(Map<String, dynamic> payload) async {
+    final fixedPayload = _normalizeBookingPayload(payload);
+
+    final response = await _api.post('api/bookings/create', body: fixedPayload);
+
+    final booking = Booking.fromJson(_parseObject(response));
+
+    return booking;
   }
 
   Future<Booking> updateBooking(int id, Map<String, dynamic> payload) async {
-    final response = await _api.put('api/bookings/update/$id', body: payload);
+    final fixedPayload = _normalizeBookingPayload(payload);
 
-    return Booking.fromJson(_parseObject(response));
+    final response = await _api.put(
+      'api/bookings/update/$id',
+      body: fixedPayload,
+    );
+
+    final booking = Booking.fromJson(_parseObject(response));
+
+    return booking;
   }
 
   Future<Map<String, dynamic>> availability({
@@ -115,15 +195,20 @@ class BookingService {
     required DateTime end,
     int? ignoreId,
   }) async {
-    final response = await _api.get(
-      'api/bookings/availability',
-      query: {
-        'room_id': roomId,
-        'start_datetime': apiDate(start),
-        'end_datetime': apiDate(end),
-        'ignore_id': ignoreId,
-      },
-    );
+    final startValue = DateTimeHelper.toApiUtcString(start);
+    final endValue = DateTimeHelper.toApiUtcString(end);
+
+    final query = <String, dynamic>{
+      'room_id': roomId,
+      'start_datetime': startValue,
+      'end_datetime': endValue,
+    };
+
+    if (ignoreId != null) {
+      query['ignore_id'] = ignoreId;
+    }
+
+    final response = await _api.get('api/bookings/availability', query: query);
 
     if (response is Map && response['data'] is Map) {
       return Map<String, dynamic>.from(response['data'] as Map);
@@ -140,14 +225,38 @@ class BookingService {
     required DateTime start,
     required DateTime end,
     int? ignoreId,
+    int? participants,
+    List<String>? equipment,
   }) async {
+    final startValue = DateTimeHelper.toApiUtcString(start);
+    final endValue = DateTimeHelper.toApiUtcString(end);
+
+    final query = <String, dynamic>{
+      'start_datetime': startValue,
+      'end_datetime': endValue,
+    };
+
+    if (ignoreId != null) {
+      query['ignore_id'] = ignoreId;
+    }
+
+    if (participants != null && participants > 0) {
+      query['participants'] = participants;
+    }
+
+    final hasAnyEquipment =
+        equipment?.map((e) => e.toLowerCase().trim()).contains('any') ?? false;
+
+    if (equipment != null && equipment.isNotEmpty && !hasAnyEquipment) {
+      query['equipment'] = equipment
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .join(',');
+    }
+
     final response = await _api.get(
       'api/bookings/available-rooms',
-      query: {
-        'start_datetime': apiDate(start),
-        'end_datetime': apiDate(end),
-        'ignore_id': ignoreId,
-      },
+      query: query,
     );
 
     return _parseRooms(response);
@@ -157,10 +266,11 @@ class BookingService {
     required DateTime start,
     required DateTime end,
   }) async {
-    final response = await _api.get(
-      'api/bookings/calendar',
-      query: {'start': apiDate(start), 'end': apiDate(end)},
-    );
+    final startValue = DateTimeHelper.toApiUtcString(start);
+    final endValue = DateTimeHelper.toApiUtcString(end);
+
+    final query = <String, dynamic>{'start': startValue, 'end': endValue};
+    final response = await _api.get('api/bookings/calendar', query: query);
 
     return _parseBookings(response);
   }
@@ -201,7 +311,73 @@ class BookingService {
     return Booking.fromJson(_parseObject(response));
   }
 
+  Future<Booking> startMeeting(int id) async {
+    final response = await _api.post(
+      'api/bookings/start/$id', // backend route for starting meeting
+    );
+
+    final booking = Booking.fromJson(_parseObject(response));
+
+    return booking;
+  }
+
+  Future<Booking> leaveMeeting(int id) async {
+    final response = await _api.post(
+      'api/bookings/leave/$id', // backend route for leaving meeting
+    );
+
+    final booking = Booking.fromJson(_parseObject(response));
+
+    return booking;
+  }
+
+  Future<Booking> addExtraTime({
+    required int id,
+    required int extraHours,
+  }) async {
+    final response = await _api.put(
+      'api/bookings/extend-time/$id',
+      body: {'extra_hours': extraHours},
+    );
+
+    final booking = Booking.fromJson(_parseObject(response));
+
+    return booking;
+  }
+
   Future<void> deleteBooking(int id) async {
     await _api.delete('api/bookings/delete/$id');
+  }
+
+  Future<Map<String, dynamic>> fetchBookingReport({
+    required String type,
+    DateTime? selectedDate,
+  }) async {
+    final date = selectedDate ?? DateTime.now();
+    final query = <String, dynamic>{
+      'type': type,
+    }; // No DateTime timezone conversion here.
+    // Only send date parts to backend.
+    switch (type) {
+      case 'daily':
+      case 'weekly':
+        query['date'] = DateFormat('yyyy-MM-dd').format(date);
+        break;
+      case 'monthly':
+        query['month'] = date.month;
+        query['year'] = date.year;
+        break;
+      case 'yearly':
+        query['year'] = date.year;
+        break;
+    }
+    final response = await _api.get(
+      AppConstants.bookingReportsPath,
+      query: query,
+    );
+    if (response is Map) {
+      return Map<String, dynamic>.from(response);
+    }
+    throw Exception('Invalid analytics response.');
   }
 }

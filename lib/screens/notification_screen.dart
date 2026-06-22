@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/notification_controller.dart';
+import '../utils/app_palette.dart';
 import '../utils/constants.dart';
 import '../widgets/notification_card.dart';
 
@@ -22,7 +23,11 @@ class NotificationScreen extends StatelessWidget {
     if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('All notifications marked as read')),
+      SnackBar(
+        content: const Text('All notifications marked as read'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
     );
   }
 
@@ -35,31 +40,32 @@ class NotificationScreen extends StatelessWidget {
 
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Notification deleted')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Notification deleted'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppConstants.bg,
+      backgroundColor: context.appColors.background,
       appBar: AppBar(
-        backgroundColor: AppConstants.bg,
-        foregroundColor: AppConstants.primaryDark,
-        elevation: 0,
-        title: const Text(
+        title: Text(
           'Notifications',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 28),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: () => _refresh(context),
-            icon: const Icon(Icons.refresh),
+          style: context.appText.titleLarge?.copyWith(
+            color: context.appColors.text,
+            fontWeight: FontWeight.w900,
           ),
-          const SizedBox(width: 8),
-        ],
+        ),
+        centerTitle: true,
+        backgroundColor: context.appColors.background,
+        foregroundColor: context.appColors.text,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
       ),
       body: Consumer<NotificationController>(
         builder: (context, controller, _) {
@@ -69,124 +75,406 @@ class NotificationScreen extends StatelessWidget {
             );
           }
 
-          return RefreshIndicator(
-            color: AppConstants.primary,
-            onRefresh: () => _refresh(context),
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(AppConstants.pagePadding),
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Manage\nNotifications',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          height: 1.15,
-                        ),
+          return SafeArea(
+            child: RefreshIndicator(
+              color: AppConstants.primary,
+              onRefresh: () => _refresh(context),
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                    sliver: SliverToBoxAdapter(
+                      child: _InboxTitleRow(
+                        unreadCount: controller.unreadCount,
+                        onMarkAllRead: controller.unreadCount == 0
+                            ? null
+                            : () => _markAllAsRead(context),
                       ),
-                    ),
-                    TextButton(
-                      onPressed: controller.unreadCount == 0
-                          ? null
-                          : () => _markAllAsRead(context),
-                      child: Text(
-                        'Mark all as\nread',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: controller.unreadCount == 0
-                              ? AppConstants.muted
-                              : AppConstants.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 28),
-
-                Row(
-                  children: [
-                    const Text(
-                      'NEW',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: AppConstants.text,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    CircleAvatar(
-                      radius: 14,
-                      backgroundColor: AppConstants.primary,
-                      child: Text(
-                        '${controller.unreadCount}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                if (controller.unread.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 20),
-                    child: Text(
-                      'No new notifications',
-                      style: TextStyle(color: AppConstants.muted),
-                    ),
-                  )
-                else
-                  ...controller.unread.map(
-                    (notification) => NotificationCard(
-                      notification: notification,
-                      onTap: () => _markAsRead(context, notification.id),
-                      onDelete: () =>
-                          _deleteNotification(context, notification.id),
                     ),
                   ),
 
-                const SizedBox(height: 30),
+                  if (controller.error != null)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                      sliver: SliverToBoxAdapter(
+                        child: _ErrorBanner(
+                          message: controller.error!,
+                          onClose: controller.clearError,
+                        ),
+                      ),
+                    ),
 
-                const Text(
-                  'EARLIER',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: AppConstants.text,
-                    letterSpacing: 1,
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                if (controller.earlier.isEmpty)
-                  const Text(
-                    'No earlier notifications',
-                    style: TextStyle(color: AppConstants.muted),
-                  )
-                else
-                  ...controller.earlier.map(
-                    (notification) => NotificationCard(
-                      notification: notification,
-                      onDelete: () =>
-                          _deleteNotification(context, notification.id),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverToBoxAdapter(
+                      child: _InboxContainer(
+                        child: _CategoryRow(
+                          icon: Icons.notifications_active_outlined,
+                          title: 'New notifications',
+                          subtitle: controller.unreadCount == 0
+                              ? 'No unread updates'
+                              : '${controller.unreadCount} unread update'
+                                    '${controller.unreadCount == 1 ? '' : 's'}',
+                          count: controller.unreadCount,
+                        ),
+                      ),
                     ),
                   ),
 
-                const SizedBox(height: 30),
-              ],
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
+                    sliver: SliverToBoxAdapter(
+                      child: _SectionLabel(title: 'NEW'),
+                    ),
+                  ),
+
+                  if (controller.unread.isEmpty)
+                    const SliverPadding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverToBoxAdapter(
+                        child: _EmptyMailState(
+                          icon: Icons.mark_email_read_outlined,
+                          title: 'You’re all caught up',
+                          description: 'No new notifications right now.',
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverToBoxAdapter(
+                        child: _InboxContainer(
+                          child: Column(
+                            children: List.generate(controller.unread.length, (
+                              index,
+                            ) {
+                              final notification = controller.unread[index];
+
+                              return Column(
+                                children: [
+                                  NotificationCard(
+                                    notification: notification,
+                                    onTap: () => context
+                                        .read<NotificationController>()
+                                        .openNotification(notification),
+                                    onDelete: () => _deleteNotification(
+                                      context,
+                                      notification.id,
+                                    ),
+                                  ),
+                                  if (index < controller.unread.length - 1)
+                                    Divider(
+                                      height: 1,
+                                      indent: 62,
+                                      color: context.appColors.border,
+                                    ),
+                                ],
+                              );
+                            }),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 30, 20, 10),
+                    sliver: SliverToBoxAdapter(
+                      child: _SectionLabel(title: 'EARLIER'),
+                    ),
+                  ),
+
+                  if (controller.earlier.isEmpty)
+                    const SliverPadding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverToBoxAdapter(
+                        child: _EmptyMailState(
+                          icon: Icons.inbox_outlined,
+                          title: 'No earlier notifications',
+                          description:
+                              'Your previous notifications appear here.',
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverToBoxAdapter(
+                        child: _InboxContainer(
+                          child: Column(
+                            children: List.generate(controller.earlier.length, (
+                              index,
+                            ) {
+                              final notification = controller.earlier[index];
+
+                              return Column(
+                                children: [
+                                  NotificationCard(
+                                    notification: notification,
+                                    onDelete: () => _deleteNotification(
+                                      context,
+                                      notification.id,
+                                    ),
+                                  ),
+                                  if (index < controller.earlier.length - 1)
+                                    Divider(
+                                      height: 1,
+                                      indent: 62,
+                                      color: context.appColors.border,
+                                    ),
+                                ],
+                              );
+                            }),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 34)),
+                ],
+              ),
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _InboxTitleRow extends StatelessWidget {
+  final int unreadCount;
+  final VoidCallback? onMarkAllRead;
+
+  const _InboxTitleRow({
+    required this.unreadCount,
+    required this.onMarkAllRead,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Inbox',
+            style: context.appText.displaySmall?.copyWith(
+              fontSize: 29,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: onMarkAllRead,
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          ),
+          child: Text(
+            unreadCount == 0 ? 'All read' : 'Mark all read',
+            style: context.appText.bodyMedium?.copyWith(
+              color: unreadCount == 0
+                  ? context.appColors.textMuted
+                  : AppConstants.primary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InboxContainer extends StatelessWidget {
+  final Widget child;
+
+  const _InboxContainer({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: context.appColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.appColors.border),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _CategoryRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final int count;
+
+  const _CategoryRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+      child: Row(
+        children: [
+          Container(
+            width: 43,
+            height: 43,
+            decoration: BoxDecoration(
+              color: context.appColors.primarySoft,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 23, color: AppConstants.primary),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: context.appText.titleMedium?.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: context.appText.bodySmall?.copyWith(
+                    color: context.appColors.textMuted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (count > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: context.appColors.primarySoft,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                count > 99 ? '99+' : '$count',
+                style: context.appText.bodySmall?.copyWith(
+                  color: AppConstants.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String title;
+
+  const _SectionLabel({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: context.appText.bodySmall?.copyWith(
+        color: context.appColors.textMuted,
+        fontWeight: FontWeight.w700,
+        fontSize: 12,
+        letterSpacing: 0.7,
+      ),
+    );
+  }
+}
+
+class _EmptyMailState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _EmptyMailState({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _InboxContainer(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+        child: Column(
+          children: [
+            Icon(icon, color: context.appColors.textMuted, size: 33),
+            const SizedBox(height: 11),
+            Text(
+              title,
+              style: context.appText.titleMedium?.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: context.appText.bodySmall?.copyWith(
+                color: context.appColors.textMuted,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onClose;
+
+  const _ErrorBanner({required this.message, required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: context.appColors.danger.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.appColors.danger.withOpacity(0.30)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: context.appColors.danger, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: context.appText.bodySmall?.copyWith(
+                color: context.appColors.danger,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            onPressed: onClose,
+            icon: Icon(Icons.close, size: 18, color: context.appColors.danger),
+          ),
+        ],
       ),
     );
   }

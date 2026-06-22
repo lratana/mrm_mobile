@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-
+import 'package:flutter_application_1/utils/date_time_helper.dart';
 import '../models/booking_model.dart';
 import '../models/room_model.dart';
 import '../services/booking_service.dart';
@@ -32,9 +32,9 @@ class BookingController extends ChangeNotifier {
     } catch (e) {
       error = _cleanError(e);
 
-      if (bookings.isEmpty) {
-        bookings = _demoBookings();
-      }
+      // if (bookings.isEmpty) {
+      //   bookings = _demoBookings();
+      // }
     } finally {
       loading = false;
       notifyListeners();
@@ -85,6 +85,7 @@ class BookingController extends ChangeNotifier {
     }
   }
 
+  // Helpers to parse API responses that may have different structures
   Future<bool> requestCancel(int id, String reason) async {
     submitting = true;
     error = null;
@@ -95,6 +96,140 @@ class BookingController extends ChangeNotifier {
 
       final index = bookings.indexWhere((booking) => booking.bookingId == id);
 
+      if (index >= 0) {
+        bookings[index] = updated;
+      }
+
+      return true;
+    } catch (e) {
+      error = _cleanError(e);
+      return false;
+    } finally {
+      submitting = false;
+      notifyListeners();
+    }
+  }
+
+  // Admin actions
+  Future<bool> rejectBooking(int id, String reason) async {
+    submitting = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final updated = await _service.reject(id, reason);
+
+      final index = bookings.indexWhere((booking) => booking.bookingId == id);
+
+      if (index >= 0) {
+        bookings[index] = updated;
+      }
+
+      return true;
+    } catch (e) {
+      error = e
+          .toString()
+          .replaceFirst('Exception: ', '')
+          .replaceFirst(RegExp(r'ApiException\(\d+\):\s*'), '');
+      return false;
+    } finally {
+      submitting = false;
+      notifyListeners();
+    }
+  }
+
+  /// Admin actions
+  Future<bool> approveBooking(int id) async {
+    submitting = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final updated = await _service.approve(id);
+
+      final index = bookings.indexWhere((booking) => booking.bookingId == id);
+
+      if (index >= 0) {
+        bookings[index] = updated;
+      }
+
+      return true;
+    } catch (e) {
+      error = e
+          .toString()
+          .replaceFirst('Exception: ', '')
+          .replaceFirst(RegExp(r'ApiException\(\d+\):\s*'), '');
+      return false;
+    } finally {
+      submitting = false;
+      notifyListeners();
+    }
+  }
+
+  // Admin actions
+  Future<bool> addExtraTime({required int id, required int extraHours}) async {
+    submitting = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final updated = await _service.addExtraTime(
+        id: id,
+        extraHours: extraHours,
+      );
+
+      final index = bookings.indexWhere((booking) => booking.bookingId == id);
+
+      if (index >= 0) {
+        bookings[index] = updated;
+      }
+
+      return true;
+    } catch (e) {
+      error = _cleanError(e);
+      return false;
+    } finally {
+      submitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> startMeeting(int bookingId) async {
+    submitting = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final updated = await _service.startMeeting(bookingId);
+
+      final index = bookings.indexWhere(
+        (booking) => booking.bookingId == bookingId,
+      );
+      if (index >= 0) {
+        bookings[index] = updated;
+      }
+
+      return true;
+    } catch (e) {
+      error = _cleanError(e);
+      return false;
+    } finally {
+      submitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> leaveMeeting(int bookingId) async {
+    submitting = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final updated = await _service.leaveMeeting(bookingId);
+
+      final index = bookings.indexWhere(
+        (booking) => booking.bookingId == bookingId,
+      );
       if (index >= 0) {
         bookings[index] = updated;
       }
@@ -138,6 +273,7 @@ class BookingController extends ChangeNotifier {
     error = null;
 
     try {
+      // ✅ FIX 1: normalize to UTC before sending
       final result = await _service.availability(
         roomId: roomId,
         start: start,
@@ -145,10 +281,16 @@ class BookingController extends ChangeNotifier {
         ignoreId: ignoreId,
       );
 
-      return result['available'] == true ||
-          result['available'] == 1 ||
-          result['available'] == '1' ||
-          result['available']?.toString().toLowerCase() == 'true';
+      // ✅ FIX 2: strict boolean parsing (clean API contract)
+      final available = result['available'];
+
+      if (available is bool) return available;
+      if (available is int) return available == 1;
+      if (available is String) {
+        return available.toLowerCase() == 'true' || available == '1';
+      }
+
+      return false;
     } catch (e) {
       error = _cleanError(e);
       notifyListeners();
@@ -160,6 +302,8 @@ class BookingController extends ChangeNotifier {
     required DateTime start,
     required DateTime end,
     int? ignoreId,
+    int? participants,
+    List<String>? equipment,
   }) async {
     loading = true;
     error = null;
@@ -170,6 +314,8 @@ class BookingController extends ChangeNotifier {
         start: start,
         end: end,
         ignoreId: ignoreId,
+        participants: participants,
+        equipment: equipment,
       );
     } catch (e) {
       error = _cleanError(e);
@@ -190,28 +336,54 @@ class BookingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<Booking> _demoBookings() {
-    final now = DateTime.now();
+  Map<String, dynamic>? analyticsReport;
+  bool analyticsLoading = false;
+  String? analyticsError;
 
-    return [
-      Booking(
-        id: 'demo-1',
-        bookingId: 1,
-        roomId: 1,
-        userId: 1,
-        meetingTitle: 'Quarterly Strategy Sync',
-        meetingChairman: 'Chairman',
-        startDatetime: now.add(const Duration(days: 1, hours: 2)),
-        endDatetime: now.add(const Duration(days: 1, hours: 4)),
-        status: 'approved',
-        room: const Room(
-          id: 1,
-          name: 'The Executive Suite',
-          location: 'Financial District, NY',
-          capacity: 12,
-          description: '',
-        ),
-      ),
-    ];
+  Future<bool> fetchBookingReport({
+    required String type,
+    DateTime? selectedDate,
+  }) async {
+    analyticsLoading = true;
+    analyticsError = null;
+    notifyListeners();
+    try {
+      analyticsReport = await _service.fetchBookingReport(
+        type: type,
+        selectedDate: selectedDate,
+      );
+      return true;
+    } catch (e) {
+      analyticsError = _cleanError(e);
+      return false;
+    } finally {
+      analyticsLoading = false;
+      notifyListeners();
+    }
   }
+
+  // List<Booking> _demoBookings() {
+  //   final now = DateTime.now();
+
+  //   return [
+  //     Booking(
+  //       id: 'demo-1',
+  //       bookingId: 1,
+  //       roomId: 1,
+  //       userId: 1,
+  //       meetingTitle: 'Quarterly Strategy Sync',
+  //       meetingChairman: 'Chairman',
+  //       startDatetime: now.add(const Duration(days: 1, hours: 2)),
+  //       endDatetime: now.add(const Duration(days: 1, hours: 4)),
+  //       status: 'approved',
+  //       room: const Room(
+  //         id: 1,
+  //         name: 'The Executive Suite',
+  //         location: 'Financial District, NY',
+  //         capacity: 12,
+  //         description: '',
+  //       ),
+  //     ),
+  //   ];
+  // }
 }

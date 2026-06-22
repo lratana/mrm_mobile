@@ -12,7 +12,8 @@ class RoomController extends ChangeNotifier {
   String search = '';
 
   List<Room> get featuredRooms => rooms.take(5).toList();
-  List<Room> get availableRooms => rooms.where((room) => room.isBookable).toList();
+  List<Room> get availableRooms =>
+      rooms.where((room) => room.isBookable).toList();
 
   Future<void> fetchRooms({String? q, bool refresh = false}) async {
     loading = true;
@@ -21,7 +22,10 @@ class RoomController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      rooms = await _service.getRooms(q: search.isEmpty ? null : search, perPage: 50);
+      rooms = await _service.getRooms(
+        q: search.isEmpty ? null : search,
+        perPage: 50,
+      );
     } catch (e) {
       error = e.toString();
       // Demo fallback keeps UI runnable before API/token setup.

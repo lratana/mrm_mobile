@@ -14,8 +14,69 @@ double _asDouble(dynamic value, {double fallback = 4.8}) {
 
 String? _asString(dynamic value) {
   if (value == null) return null;
-  final text = value.toString();
+  final text = value.toString().trim();
   return text.isEmpty ? null : text;
+}
+
+bool _asBool(dynamic value) {
+  if (value == true) return true;
+  if (value == 1) return true;
+
+  final text = value?.toString().toLowerCase().trim();
+
+  return text == 'true' || text == '1' || text == 'yes';
+}
+
+String? _normalizeRoomStatus(String? value) {
+  final status = value?.toLowerCase().trim();
+
+  if (status == null || status.isEmpty) return null;
+
+  if (status == 'ismeeting' ||
+      status == 'is_meeting' ||
+      status == 'inmeeting' ||
+      status == 'in_meeting' ||
+      status == 'occupied' ||
+      status == 'busy' ||
+      status == 'booked') {
+    return 'in_meeting';
+  }
+
+  if (status == 'approved' || status == 'upcoming') {
+    return 'upcoming';
+  }
+
+  if (status == 'available') {
+    return 'available';
+  }
+
+  return status;
+}
+
+String? _roomStatusFromJson(Map<String, dynamic> json) {
+  final directStatus =
+      _asString(json['current_status']) ??
+      _asString(json['status']) ??
+      _asString(json['room_status']) ??
+      _asString(json['meeting_status']) ??
+      _asString(json['availability_status']);
+
+  if (directStatus != null) {
+    return _normalizeRoomStatus(directStatus);
+  }
+
+  final isMeeting =
+      json['is_meeting'] ??
+      json['isMeeting'] ??
+      json['in_meeting'] ??
+      json['inMeeting'] ??
+      json['occupied'];
+
+  if (_asBool(isMeeting)) {
+    return 'in_meeting';
+  }
+
+  return 'available';
 }
 
 class Department {
@@ -62,12 +123,16 @@ class RoomImage {
   factory RoomImage.fromJson(Map<String, dynamic> json) {
     return RoomImage(
       id: _asInt(json['id']),
-      imagePath: _asString(json['image_url']) ??
+      imagePath:
+          _asString(json['image_url']) ??
           _asString(json['url']) ??
           _asString(json['image_path']) ??
           _asString(json['path']) ??
           '',
-      isPrimary: json['is_primary'] == true || json['is_primary'] == 1 || json['is_primary'] == '1',
+      isPrimary:
+          json['is_primary'] == true ||
+          json['is_primary'] == 1 ||
+          json['is_primary'] == '1',
       sortOrder: _asInt(json['sort_order']),
     );
   }
@@ -119,12 +184,15 @@ class Room {
 
     return Room(
       id: _asInt(json['id']),
-      departmentId: json['department_id'] == null ? null : _asInt(json['department_id']),
+      departmentId: json['department_id'] == null
+          ? null
+          : _asInt(json['department_id']),
       name: _asString(json['name']) ?? 'Untitled Room',
       description: _asString(json['description']) ?? '',
       location: _asString(json['location']) ?? '',
       capacity: _asInt(json['capacity']),
-      thumbnailPath: _asString(json['thumbnail_url']) ??
+      thumbnailPath:
+          _asString(json['thumbnail_url']) ??
           _asString(json['thumbnail']) ??
           _asString(json['thumbnail_path']),
       department: json['department'] is Map<String, dynamic>
@@ -132,18 +200,18 @@ class Room {
           : null,
       equipment: equipmentJson is List
           ? equipmentJson
-              .whereType<Map<String, dynamic>>()
-              .map(Equipment.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(Equipment.fromJson)
+                .toList()
           : const [],
       images: imagesJson is List
           ? imagesJson
-              .whereType<Map<String, dynamic>>()
-              .map(RoomImage.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(RoomImage.fromJson)
+                .toList()
           : const [],
       rating: _asDouble(json['rating']),
-      status: _asString(json['status']),
+      status: _roomStatusFromJson(json),
     );
   }
 
